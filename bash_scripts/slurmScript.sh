@@ -1,8 +1,8 @@
 #!/bin/bash
 
 HOME="/home/alper"
-VENV_PATH="${HOME}/venv"
-EBLOCBROKER_PATH="${HOME}/eBlocBroker"
+VENV_PATH="/home/alper/venv"
+EBLOCBROKER_PATH="/home/alper/eBlocBroker"
 EMAIL="aalimog1@binghamton.edu"
 LOG_FILE="${HOME}/.eBlocBroker/slurm_script.log"
 

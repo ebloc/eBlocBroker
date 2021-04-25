@@ -45,8 +45,9 @@ UTC--2018-02-14T10-46-54.423218000Z--a0a50a64cac0744dea5287d1025b8ef28aeff36e
 ```
 
 **On the console, use:**
-You can also create your Ethereum account using `geth-client`. Here your
-keystore file will be created with root permission and `eBlocWallet` will not able to unlock it.
+You can also create your Ethereum account using `geth-client`.
+Here your keystore file will be created with root permission and `eBlocWallet`
+will not able to unlock it.
 
 ```bash
 > personal.newAccount()
@@ -70,10 +71,10 @@ To give open acccess to the keystore file:
 sudo chown -R $(whoami) private/keystore/UTC--...
 ```
 
-- Afterwards, open the following file: `$HOME/eBlocBroker/.profile` and set `COINBASE` with your
-  created Ethereum Address.
+- Afterwards, open the following file: `$HOME/eBlocBroker/.profile` and set
+  `COINBASE` with your created Ethereum Address.
 
--------
+---------------------------------------------------------------------------
 
 Later, do following inside your instance.
 

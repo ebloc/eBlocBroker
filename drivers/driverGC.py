@@ -5,8 +5,7 @@ from pymongo import MongoClient
 import eblocbroker.Contract as Contract
 from config import env
 from imports import connect
-from lib import run_command
-from utils import StorageID, silent_remove
+from utils import StorageID, run, silent_remove
 
 cl = MongoClient()
 coll = cl["eBlocBroker"]["cache"]
@@ -28,11 +27,8 @@ for document in cursor:
     if endBlockTime < block_number and received_block_number != 0:
         if storageID in (StorageID.IPFS, StorageID.IPFS_GPG):
             ipfsHash = document["jobKey"]
-            cmd = ["ipfs", "pin", "rm", ipfsHash]
-            success, output = run_command(cmd)
-            print(output)
-            success, output = run_command(["ipfs", "repo", "gc"])
-            print(output)
+            print(run(["ipfs", "pin", "rm", ipfsHash]))
+            print(run(["ipfs", "repo", "gc"]))
         else:
             cachedFileName = (
                 env.PROGRAM_PATH + "/" + document["requesterID"] + "/cache/" + document["sourceCodeHash"] + "tar.gz"

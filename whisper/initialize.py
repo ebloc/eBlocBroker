@@ -10,10 +10,9 @@ from utils import json_pretty, log
 
 w3 = Web3(HTTPProvider("http://localhost:8545"))
 
-
-print("Initializing...")
 # generates a new public and private key pair for message decryption and
 # encryption
+print("Initializing...")
 key_id = w3.geth.shh.newKeyPair()
 public_key = w3.geth.shh.getPublicKey(key_id)
 filter_id = w3.geth.shh.new_message_filter(
@@ -29,4 +28,4 @@ json_pretty(data)  # prints data
 with open(env.WHISPER_INFO, "w") as outfile:
     json.dump(data, outfile)
 
-log(f"=> You can access your whisper info from {env.WHISPER_INFO}", "green")
+log(f"==> You can access your whisper info from {env.WHISPER_INFO}", "green")

@@ -1,22 +1,26 @@
-# Enable Google-Instance:
+# Enable Port Google-Instance:
 
-- VPN network => Firewall => Create Firewall rule
 
-```
-default-ipfs
-Ingress
-http-server
-IP ranges: 0.0.0.0/0
-tcp:4001
-Allow
-1000
-default
-Off
-```
+- `Navigation Menu` => `VPN Network` => `Firewall` => `Create Firewall Rule`
 
-- Open instance, edit, network tags => add `default-ipfs`
 
-----------------
+- Name: `default-ipfs`
+- Type: `Ingress`
+- Targets: `http-server`
+- IP ranges: `0.0.0.0/0`
+- TCP: `4001`
+- Action: `Allow`
+- Priority: `1000`
+- default
+- Off
+
+
+- Open instance, Edit, network tags => add `default-ipfs`
+- `sudo service network-manager restart` or reboot in case
+
+--------------------------------------------------------------------------------
+
+# Upgrade GO
 
 # Private Networks
 
@@ -27,27 +31,25 @@ Off
 go get github.com/Kubuxu/go-ipfs-swarm-key-gen/ipfs-swarm-key-gen
 ipfs-swarm-key-gen > ~/.ipfs/swarm.key
 
-
+export LIBP2P_FORCE_PNET=1 && IPFS_PATH=~/.ipfs ipfs daemon
 ```
 
 # All nodes:
 
-```
-export LIBP2P_FORCE_PNET=1 && IPFS_PATH=~/.ipfs ipfs daemon
-```
+- Port check: `nc -v <ip> 4001`
 
 ```
+killall ipfs
 ipfs bootstrap rm --all
-ipfs bootstrap add /ip4/34.89.13.197/tcp/4001/p2p/12D3KooWHpiUYZ8ET4Qb8uywNKBMFioYmV1MpTwKktz8LS4FXfer
+ipfs bootstrap add /ip4/35.228.249.124/tcp/4001/p2p/12D3KooWKSE8mdZosQrUEDmnMSFHYXhrypaS15qJQ5rkzjBc9NjT
 
-echo "/key/swarm/psk/1.0.0/
+echo "/key/swarm/psk/1.0.0/  # cat ~/.ipfs/swarm.key  # obtained from the main node
 /base16/
-d0e4cbcfad1f5a945bf8e44ddf8de5da87a7d5418072470419f7cbb2f83fd607" > ~/.ipfs/swarm.key
+c0309d791822a351c291fab0517b51345ad72272bf0e5b5738e4070aa8e78adf" > ~/.ipfs/swarm.key
 ```
 
-# For home and home2
+# For home and home2 to make the connect to each other
 
 ```
-ipfs swarm connect
-/ip4/192.168.1.3/tcp/4001/p2p/12D3KooWSE6pY7t5NxMLiGd4h7oba6XqxJFD2KNZTQFEjWLeHKsd
+ipfs swarm connect /ip4/192.168.1.3/tcp/4001/p2p/12D3KooWSE6pY7t5NxMLiGd4h7oba6XqxJFD2KNZTQFEjWLeHKsd
 ```

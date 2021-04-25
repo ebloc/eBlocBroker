@@ -420,7 +420,6 @@ contract eBlocBroker is eBlocBrokerInterface, EBlocBrokerBase {
 
             if (_committedBlock <= block.number) {
                 _committedBlock = (block.number - _pricesSetBlockNum) / _commitmentBlockDuration + 1;
-
                 // Next price cycle to be considered
                 _committedBlock = _pricesSetBlockNum + _committedBlock * _commitmentBlockDuration;
             }

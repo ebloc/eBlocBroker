@@ -1,14 +1,16 @@
-doc:
+# Installation
+
+link:
 https://stackoverflow.com/questions/65396850/how-to-handle-app-is-temporarily-blocked-from-logging-in-with-your-google-accou/65507155#65507155
+
 
 @tellowkrinkle's [comment][1] help me to solve the issue.
 
 
-> Probably yes. I have the old binary and Google blocks it from
-> authenticating, saying that it's dangerous and they blocked it for my
-> safety (thanks a lot). It looks like Google now requires you to let
-> them review applications that want to access sensitive information
-> through their API
+> Probably yes. I have the old binary and Google blocks it from authenticating,
+> saying that it's dangerous and they blocked it for my safety (thanks a
+> lot). It looks like Google now requires you to let them review applications
+> that want to access sensitive information through their API
 >
 > If you want to use it for yourself, you will need to:
 >
@@ -29,11 +31,12 @@ https://stackoverflow.com/questions/65396850/how-to-handle-app-is-temporarily-bl
 ```
 $ git clone https://github.com/prasmussen/gdrive.git
 $ cd gdrive
-$ nano handlers_drive.go
 # Copy the Client ID and Secret into handlers_drive.go lines 17 and 18 and compile the application
+$ nano handlers_drive.go
 $ mv ~/.gdrive/token_v2.json ~/.gdrive/token_v2.json.old
 $ go get github.com/prasmussen/gdrive
-$ go build -ldflags '-w -s'
+$ go build -ldflags "-w -s"
+$ cp gdrive $GOPATH/bin/gdrive
 $ gdrive about
 Go to the following url in your browser:
 https://accounts.google.com/o/oauth2/auth?access_type=.....
@@ -50,56 +53,3 @@ Guide:
 
   [1]: https://github.com/prasmussen/gdrive/commit/31d0829c180795d17e00b7a354fffe4d72be712b#commitcomment-45165924
   [2]: https://github.com/prasmussen/gdrive/issues/426
-
-
-
----------
-
-# Headless Usage & Authorization
-
-```
-$ google-drive-ocamlfuse -headless -label me -id ##yourClientID##.apps.googleusercontent.com -secret ###yoursecret#####
-```
-
-doc: https://github.com/astrada/google-drive-ocamlfuse/wiki/Headless-Usage-&-Authorization
-
-
-Set `shared_with_me=true` in the config file to have read-only access to all your "Shared with me" files under ./.shared.
-
-```
-$ cat ~/.gdfuse/me/config | grep shared_with_me
-shared_with_me=true
-```
-
-
-# Load:
-
-```
-folderName='ipfs'
-providerToShare='aalimog1@binghamton.edu' //'alper01234alper@gmail.com'
-
-gdrive upload --recursive $folderName
-jobKey=$(gdrive list | grep $folderName | awk '{print $1}')
-echo jobKey=$jobKey
-gdrive share $jobKey  --role writer --type user --email $providerToShare
-```
-
----------------
-
-# Save
-
-```
-cd folder
-shareId='1-R0MoQj7Xfzu3pPnTqpfLUzRMeCTg6zG'
-
-folderName=$(gdrive info $shareId | grep 'Name' | awk '{print $2}')
-
-mimeType=$(gdrive info 1-R0MoQj7Xfzu3pPnTqpfLUzRMeCTg6zG | grep 'Mime' | awk '{print $2}')
-
-gdrive download --recursive  $shareId --force
-
-gdrive upload --parent $shareId README.md
-gdrive upload --parent --recursive $shareId folder  # upload folder
-```
-
--------------

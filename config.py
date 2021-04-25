@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 import threading
 from logging import Filter
 from os.path import expanduser
@@ -9,8 +10,8 @@ from pathlib import Path
 from typing import Union
 
 from dotenv import load_dotenv
-from web3 import Web3  # noqa: F401
 
+# from web3 import Web3
 import _utils.colored_traceback as colored_traceback
 import _utils.colorer  # noqa
 
@@ -19,7 +20,7 @@ import _utils.colorer  # noqa
 
 
 class ThreadFilter(Filter):
-    """Only accept log records from a specific thread or thread name"""
+    """Only accept log records from a specific thread or thread name."""
 
     def __init__(self, thread_id=None, thread_name=None):
         if thread_id is None and thread_name is None:
@@ -37,7 +38,7 @@ class ThreadFilter(Filter):
 
 
 class IgnoreThreadsFilter(Filter):
-    """Only accepts log records that originated from the main thread"""
+    """Only accepts log records that originated from the main thread."""
 
     def __init__(self):
         self._main_thread_id = threading.main_thread().ident
@@ -64,16 +65,10 @@ class ENV:
                 for line in f:
                     if line.startswith("#") or not line.strip():
                         continue
-                    # if 'export' not in line:
-                    #     continue
-                    # Remove leading `export `, if you have those
-                    # then, split name / value pair
-                    # key, value = line.replace('export ', '', 1).strip().split('=', 1)
                     key, value = line.strip().split("=", 1)
-                    _env[key] = value.replace('"', "")  # Save to a dict
+                    _env[key] = value.replace('"', "").split("#", 1)[0].rstrip()
         except IOError:
-            print(f"E: File '{env_file}' is not accessible")
-            return
+            raise Exception(f"E: File '{env_file}' is not accessible")
 
         load_dotenv(dotenv_path=env_file)
         self.log_filename = None
@@ -83,13 +78,15 @@ class ENV:
         self.LOG_PATH = _env["LOG_PATH"]
         self.GDRIVE = _env["GDRIVE"]
         self.OC_USER = _env["OC_USER"]
+        self.DATADIR = _env["DATADIR"]
 
-        self.IPFS_USE = str(_env["IPFS_USE"]).lower() in ("yes", "true", "t", "1")
-        self.EUDAT_USE = str(_env["EUDAT_USE"]).lower() in ("yes", "true", "t", "1",)
-        self.GDRIVE_USE = str(_env["EUDAT_USE"]).lower() in ("yes", "true", "t", "1",)
-        self.EBLOCPATH = _env["EBLOCPATH"]
+        self.IS_IPFS_USE = str(_env["IS_IPFS_USE"]).lower() in ("yes", "true", "t", "1")
+        self.IS_EUDAT_USE = str(_env["IS_EUDAT_USE"]).lower() in ("yes", "true", "t", "1",)
+        self.IS_GDRIVE_USE = str(_env["IS_GDRIVE_USE"]).lower() in ("yes", "true", "t", "1",)
         self.POA_CHAIN = str(_env["POA_CHAIN"]).lower() in ("yes", "true", "t", "1",)
+        self.IS_DRIVER = False
         self.RPC_PORT = _env["RPC_PORT"]
+        self.EBLOCPATH = _env["EBLOCPATH"]
 
         # self.GDRIVE_CLOUD_PATH = f"/home/{self.WHOAMI}/foo"
         self.GDRIVE_METADATA = f"/home/{self.WHOAMI}/.gdrive"
@@ -125,7 +122,6 @@ class ENV:
     def set_provider_id(self, provider_id=None):
         if not os.getenv("PROVIDER_ID"):
             if provider_id:
-                print(w3)
                 self.PROVIDER_ID = w3.toChecksumAddress(provider_id)
             else:
                 print("E: Please set PROVIDER_ID in ~/.eBlocBroker/.env")
@@ -173,16 +169,23 @@ def setup_logger(log_path="", is_brownie=False):
 
 Ebb = None  # eBlocBlock Contract Class
 ebb = None  # eBlocBroker Contract on the blockchain
-w3: Web3 = None
 contract = None
+w3 = None  # w3: Web3 = None
+chain = None
+
+colored_traceback.add_hook(always=True)
+logger = setup_logger()  # Default initialization
 
 coll = None
 oc = None
 driver_cancel_process = None
 whisper_state_receiver_process = None
-colored_traceback.add_hook(always=True)
-env = ENV()
-logger = setup_logger()  # Default initialization
+
+try:
+    env = ENV()
+except Exception as e:
+    print(e)
+    sys.exit()
 
 BLOCK_DURATION = 15
 RECONNECT_ATTEMPTS = 5

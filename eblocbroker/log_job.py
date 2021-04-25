@@ -17,7 +17,9 @@ def log_return(event_filter, poll_interval):
     sleep_duration = 0
     while True:
         block_num = config.Ebb.get_block_number()
-        sys.stdout.write("\r## [ block_num={:d} ] Waiting logs for {:1d} seconds...".format(block_num, sleep_duration))
+        sys.stdout.write(
+            "\r## [ block_num={:d} ] Waiting logs since {:1d} seconds...".format(block_num, sleep_duration)
+        )
         sys.stdout.flush()
 
         logged_jobs = event_filter.get_new_entries()
@@ -50,21 +52,6 @@ def run_log_cancel_refund(self, from_block, provider):
         return log_return(event_filter, 2)
 
 
-"""
-def run_single_log_job(self, from_block, jobKey, transactionHash):
-    event_filter = self.eBlocBroker.events.LogJob.createFilter(
-        fromBlock=int(from_block), argument_filters={"provider": str(provider)}
-    )
-    logged_jobs = event_filter.get_all_entries()
-
-    if len(logged_jobs) > 0:
-        for logged_job in logged_jobs:
-            if logged_job["transactionHash"].hex() == transactionHash:
-                return logged_job["index"]
-    else:
-        return log_return(event_filter, 2)
-"""
-
 if __name__ == "__main__":
     import eblocbroker.Contract as Contract
 
@@ -86,13 +73,13 @@ if __name__ == "__main__":
             jobKey = logged_jobs[i].args['jobKey']
         """
 
-        print(f"transactionHash={logged_job['transactionHash'].hex()} | logIndex={logged_job['logIndex']}")
-        print("blockNumber: " + str(logged_job["blockNumber"]))
+        print(f"transaction_hash={logged_job['transactionHash'].hex()} | logIndex={logged_job['logIndex']}")
+        print("block_number: " + str(logged_job["blockNumber"]))
         print("provider: " + logged_job.args["provider"])
-        print("jobKey: " + logged_job.args["jobKey"])
+        print("job_key: " + logged_job.args["jobKey"])
         print("index: " + str(logged_job.args["index"]))
         print("cloud_storage_id: " + str(StorageID(cloud_storage_id).name))
-        print("cacheType: " + str(CacheType(logged_job.args["cacheType"]).name))
+        print("cache_type: " + str(CacheType(logged_job.args["cacheType"]).name))
         print("received: " + str(logged_job.args["received"]))
 
         for value in logged_job.args["sourceCodeHash"]:
@@ -104,3 +91,19 @@ if __name__ == "__main__":
 # bytes32[] sourceCodeHash,
 # uint8 cacheType,
 # uint received);
+
+"""
+def run_single_log_job(self, from_block, jobKey, transactionHash):
+    event_filter = self.eBlocBroker.events.LogJob.createFilter(
+        fromBlock=int(from_block), argument_filters={"provider": str(provider)}
+    )
+    logged_jobs = event_filter.get_all_entries()
+
+    if len(logged_jobs) > 0:
+        for logged_job in logged_jobs:
+            if logged_job["transactionHash"].hex() == transactionHash:
+                return logged_job["index"]
+    else:
+        return log_return(event_filter, 2)
+
+"""

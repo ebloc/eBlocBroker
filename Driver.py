@@ -13,6 +13,7 @@ from ipdb import launch_ipdb_on_exception
 import config
 import eblocbroker.Contract as Contract
 import libs.eudat as eudat
+import libs.gdrive as gdrive
 import libs.slurm as slurm
 from config import env, logging, setup_logger
 from contract.scripts.lib import DataStorage
@@ -20,12 +21,9 @@ from drivers.eudat import EudatClass
 from drivers.gdrive import GdriveClass
 from drivers.ipfs import IpfsClass
 from helper import helper
-from lib import (  # noqa
+from lib import (  # run_whisper_state_receiver
     eblocbroker_function_call,
-    run,
-    run_command,
     run_storage_thread,
-    run_whisper_state_receiver,
     session_start_msg,
     state_code,
 )
@@ -43,10 +41,12 @@ from utils import (
     is_geth_on,
     is_internet_on,
     is_ipfs_running,
+    is_program_valid,
     log,
     question_yes_no,
     read_file,
     read_json,
+    run,
     sleep_timer,
     terminate,
     write_to_file,
@@ -82,22 +82,32 @@ def tools(block_number):
             _colorize_traceback()
         sys.exit(1)
 
-    # run_wnnhisper_state_receiver()  # TODO: uncomment
+    # run_whisper_state_receiver()  # TODO: uncomment
     # run_driver_cancel()  # TODO: uncomment
-    if env.GDRIVE_USE:
-        try:
-            run(["gdrive", "version"])
-        except Exception:
-            terminate("E: Please install gdrive or check its path")
-
-    if env.IPFS_USE:
-        is_ipfs_running()
-
-    if env.EUDAT_USE:
+    if env.IS_EUDAT_USE:
         if not env.OC_USER:
             terminate(f"E: OC_USER is not set in {env.LOG_PATH}/.env")
         else:
             eudat.login(env.OC_USER, f"{env.LOG_PATH}/.eudat_provider.txt", env.OC_CLIENT)
+
+    if env.IS_GDRIVE_USE:
+        is_program_valid(["gdrive", "version"])
+        try:
+            provider_info = config.Ebb.get_provider_info(env.PROVIDER_ID)
+        except Exception:
+            terminate(is_traceback=False)
+
+        _email = provider_info["email"]
+        output, gdrive_email = gdrive.check_user(_email)
+        if not output:
+            terminate(
+                f"E: Provider's email address({_email}) does not match\nwith the set gdrive address({{gdrive_email}})"
+            )
+        else:
+            log(f"==> provider_email={_email}")
+
+    if env.IS_IPFS_USE:
+        is_ipfs_running()
 
     if not check_ubuntu_packages():
         sys.exit(1)
@@ -108,32 +118,37 @@ def run_driver():
     # dummy sudo command to get the password when session starts for only to
     # create users and submit the slurm job under another user
     run(["sudo", "printf", "hello"])
+    env.IS_DRIVER = True
     env.IS_THREADING_ENABLED = False
     config.logging = setup_logger(env.DRIVER_LOG)
     columns = 100
     # driver_cancel_process = None
     # whisper_state_receiver_process = None
-
     try:
         from imports import connect
 
         connect()
         config.Ebb = Ebb = Contract.eblocbroker
         Contract.eblocbroker.ebb = config.ebb  # set for global use across functions
-    except:
+    except Exception:
         _colorize_traceback()
         terminate()
 
     if not env.PROVIDER_ID:
-        terminate("PROVIDER_ID is None")
+        terminate("E: PROVIDER_ID is None")
 
     if not env.WHOAMI or not env.EBLOCPATH or not env.PROVIDER_ID:
         terminate(f"Please run: {env.EBLOCPATH}/folder_setup.sh")
 
     if not env.SLURMUSER:
-        terminate("SLURMUSER is not set in ~/.eBlocBroker/.env")
+        terminate("E: SLURMUSER is not set in ~/.eBlocBroker/.env")
 
-    deployed_block_number = Ebb.get_deployed_block_number()
+    try:
+        deployed_block_number = Ebb.get_deployed_block_number()
+
+    except Exception:
+        breakpoint()  # DEBUG
+
     if not os.path.isfile(env.BLOCK_READ_FROM_FILE):
         write_to_file(env.BLOCK_READ_FROM_FILE, deployed_block_number)
 
@@ -144,7 +159,7 @@ def run_driver():
         if not block_number_saved.isdigit():
             log("E: BLOCK_READ_FROM_FILE is empty or contains an invalid character")
             question_yes_no(
-                "## Would you like to read from contract's deployed block number? [Y/n]: ", is_terminate=True
+                "## Would you like to read from the contract's deployed block number? [Y/n]: ", is_terminate=True
             )
             block_number_saved = deployed_block_number
             write_to_file(env.BLOCK_READ_FROM_FILE, deployed_block_number)
@@ -153,18 +168,22 @@ def run_driver():
     try:
         Ebb.is_contract_exists()
         contract_file = read_json(f"{env.EBLOCPATH}/eblocbroker/contract.json")
-    except:
-        terminate("E: Contract address does not exist on the blockchain, is the blockchain sync?")
+    except Exception:
+        terminate(
+            "E: Contract address does not exist on the blockchain, is the blockchain sync?\n"
+            f"block_number={Ebb.get_block_number()}",
+            is_traceback=False,
+        )
 
     if env.IS_THREADING_ENABLED:
         log(f"is_threading={env.IS_THREADING_ENABLED}", color="blue")
 
     Ebb.is_eth_account_locked(env.PROVIDER_ID)
-    log(f"is_web3_connected={Ebb.is_web3_connected()}", color="blue")
-    log(f"log_file={env.DRIVER_LOG}", color="blue")
-    log(f"rootdir={os.getcwd()}", color="blue")
-    log(f"whoami={env.WHOAMI}", color="blue")
-    log("{0: <18}".format("contract_address:") + contract_file["address"], color="blue")
+    log(f"==> is_web3_connected={Ebb.is_web3_connected()}")
+    log(f"==> log_file={env.DRIVER_LOG}")
+    log(f"==> rootdir={os.getcwd()}")
+    log(f"==> whoami={env.WHOAMI}")
+    log("{0: <18}".format("==> contract_address=") + contract_file["address"])
     if not Ebb.does_provider_exist(env.PROVIDER_ID):
         # Updated since cluster is not registered
         write_to_file(env.BLOCK_READ_FROM_FILE, Ebb.get_block_number())
@@ -192,44 +211,40 @@ def run_driver():
             terminate(f"E: block_read_from={block_read_from}")
 
         balance = Ebb.get_balance(env.PROVIDER_ID)
-        success, squeue_output = run_command(["squeue"])
-        # gets real unfo under the header after the first line
-        if not success or "squeue: error:" in str(squeue_output):
-            logging.error("E: SLURM is not running on the background. Please run:\nsudo ./bash_scripts/run_slurm.sh")
-            log(squeue_output, color="red", is_bold=False)
-            terminate()
+        try:
+            squeue_output = run(["squeue"])
+            if "squeue: error:" in str(squeue_output):
+                raise
+        except:
+            terminate("E: SLURM is not running on the background. Please run:\nsudo ./bash_scripts/run_slurm.sh")
 
+        # Gets real info under the header after the first line
         if len(f"{squeue_output}\n".split("\n", 1)[1]) > 0:
             # checks if the squeue output's line number is gretaer than 1
-            log(f"Current slurm running jobs status:\n{squeue_output}")
+            log(f"Current slurm running jobs status:\n{squeue_output}", color="yellow")
             log("-" * int(columns), "green")
 
-        log(f"==> [{get_time()}]")
+        log(f"==> date=[{get_time()}]")
         if isinstance(balance, int):
             log(f"==> provider_gained_wei={int(balance) - int(balance_temp)}")
 
         current_block_number = Ebb.get_block_number()
-        log(f"==> waiting new job to come since block number={block_read_from}", "blue")
-        log(f"==> current_block={current_block_number} | sync_from={block_read_from}", "blue")
-        log(f"==> is_web3_connected={Ebb.is_web3_connected()}", "blue")
-
-        log(f"block_read_from={block_read_from}")
+        log(f"==> waiting new job to come since block number={block_read_from}")
+        log(f"==> current_block={current_block_number} | sync_from={block_read_from}")
+        # log(f"block_read_from={block_read_from}")
         flag = True
         while current_block_number < int(block_read_from):
             current_block_number = Ebb.get_block_number()
             if flag:
                 log(
-                    "## Waiting block number to be updated from the blockchain, it remains constant at"
-                    f" {current_block_number}...",
+                    f"## Waiting block number to be updated, it remains constant at {current_block_number}...",
                     color="blue",
                 )
             flag = False
             time.sleep(0.25)
 
         log(f"Passed incremented block number... Watching from block number={block_read_from}", color="yellow")
-        # starting reading event's location has been updated
-
-        block_read_from = str(block_read_from)
+        block_read_from = str(block_read_from)  # reading event's location has been updated
         slurm.pending_jobs_check()
         logged_jobs_to_process = Ebb.run_log_job(block_read_from, env.PROVIDER_ID)
         max_blocknumber = 0
@@ -271,7 +286,7 @@ def run_driver():
                 storageDuration.append(ds.storage_duration)
 
                 is_already_cached[source_code_hash] = False  # FIXME double check
-                # If remaining time to cache is 0, then caching is requested for the related source_code_hash
+                # if remaining time to cache is 0, then caching is requested for the related source_code_hash
                 if ds.received_block + ds.storage_duration >= block_number:
                     if ds.received_block < block_number:
                         is_already_cached[source_code_hash] = True
@@ -297,7 +312,7 @@ def run_driver():
 
             try:
                 run(["bash", f"{env.EBLOCPATH}/bash_scripts/is_str_valid.sh", job_key])
-            except:
+            except Exception:
                 logging.error("E: Filename contains an invalid character")
                 continue
 
@@ -310,9 +325,9 @@ def run_driver():
                 job_info.update({"received_block": received_block})
                 job_info.update({"storageDuration": storageDuration})
                 job_info.update({"cacheType": logged_job.args["cacheType"]})
-                pprint(job_info)
                 job_infos.append(job_info)
-            except:
+                pprint(job_info)
+            except Exception:
                 continue
 
             for job in range(1, len(job_infos[0]["core"])):
@@ -320,14 +335,14 @@ def run_driver():
                     job_infos.append(  # if workflow is given then add jobs into list
                         Ebb.get_job_info(env.PROVIDER_ID, job_key, index, job, block_number)
                     )
-                except:
+                except Exception:
                     pass
 
             if not job_infos[0]["core"] or not job_infos[0]["run_time"]:
                 logging.error("E: Requested job does not exist")
                 continue
 
-            requester_id = job_infos[0]["jobOwner"]
+            requester_id = job_infos[0]["job_owner"]
             log(f"requester={requester_id}", color="yellow")
             if not Ebb.does_requester_exist(requester_id):
                 logging.error("E: job owner is not registered")
@@ -335,7 +350,7 @@ def run_driver():
 
             if mongodb.is_received(str(requester_id), job_key, index):
                 # Preventing to download or submit again
-                log("mongodb: Job is already received", "green")
+                log("==> [ mongodb ] Job is already received", color="green")
                 continue
 
             if job_infos[0]["stateCode"] == state_code["COMPLETED"]:
@@ -347,7 +362,7 @@ def run_driver():
                 continue
 
             if not job_infos[0]["stateCode"] == state_code["SUBMITTED"]:
-                log("Job is already captured or it is in process or completed.", "green")
+                log("Job is already captured. It is already in process or completed.", color="green")
                 continue
 
             try:
@@ -361,7 +376,7 @@ def run_driver():
                     if not config.oc:
                         try:
                             eudat.login(env.OC_USER, f"{env.LOG_PATH}/.eudat_provider.txt", env.OC_CLIENT)
-                        except:
+                        except Exception:
                             _colorize_traceback()
                             sys.exit(1)
 
@@ -375,10 +390,9 @@ def run_driver():
                     run_storage_thread(storage_class)
                 else:
                     storage_class.run()
-            except:
+            except Exception:
                 _colorize_traceback()
                 sys.exit(1)
-
         if len(logged_jobs_to_process) > 0 and max_blocknumber > 0:
             # updates the latest read block number
             block_read_from = max_blocknumber + 1
@@ -420,7 +434,7 @@ if __name__ == "__main__":
                     if lock:
                         lock.close()
                         open(env.DRIVER_LOCKFILE, "w").close()
-                except:
+                except Exception:
                     _colorize_traceback()
     except Exception as e:
         if type(e).__name__ != "KeyboardInterrupt":

@@ -9,13 +9,13 @@ from utils import _colorize_traceback
 
 
 def update_provider_info(self, gpg_fingerprint, email, federation_cloud_id, ipfs_address, whisper_pub_key):
-    whisper_pub_key = check_whisper()
+    # whisper_pub_key = check_whisper()
     if len(federation_cloud_id) >= 128:
-        logging.error("E: federation_cloud_id hould be lesser than 128")
+        logging.error("E: federation_cloud_id could be lesser than 128")
         raise
 
     if len(email) >= 128:
-        logging.error("E: email should be less than 128")
+        logging.error("E: e-mail should be less than 128")
         raise
 
     # if (len(gpg_fingerprint) == 0 or len(gpg_fingerprint) == 42):
@@ -34,7 +34,8 @@ if __name__ == "__main__":
 
     Ebb = Contract.eblocbroker
     gpg_fingerprint = "0359190A05DF2B72729344221D522F92EFA2F330"
-    email = "alper.alimoglu.research@gmail.com"
+    email = "alper.alimoglu@gmail.com"
+    # email = "alper.alimoglu.research2@gmail.com"
     federation_cloud_id = "5f0db7e4-3078-4988-8fa5-f066984a8a97@b2drop.eudat.eu"
     ipfs_address = ""
     whisper_pub_key = ""

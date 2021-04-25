@@ -10,8 +10,7 @@ import time
 from web3 import HTTPProvider, Web3
 
 from config import env
-from lib import run_command
-from utils import _colorize_traceback, log, read_json
+from utils import _colorize_traceback, log, read_json, run
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -30,10 +29,9 @@ def check_whisper():
         whisper_pub_key = data["public_key"]
         if not w3.geth.shh.hasKeyPair(key_id):
             log("E: Whisper node's private key of a key pair did not match with the given ID")
-            log(f"{env.EBLOCPATH}/whisper/initialize.py", "green")
             raise
     except:
-        log("Please first run:")
+        log("Please first run: ", end="")
         log(f"{env.EBLOCPATH}/whisper/initialize.py", "green")
         _colorize_traceback()
         raise
@@ -43,12 +41,17 @@ def check_whisper():
 def reply_sinfo(recipient_public_key, my_public_key):
     # https://stackoverflow.com/a/50095154/2402577
     cmd = ["sinfo", "-h", "-o%C"]
-    success, output = run_command(cmd)
-    print(f"CPUS(A/I/O/T)={output}")
+    try:
+        output = run(cmd)
+    except:
+        _colorize_traceback()
+        log("E: sinfo generates error")
+
+    log(f"CPUS(A/I/O/T)={output}")
     output = output.split("/")
     allocated_core = output[1]
     idle_core = output[1]
-    if success and my_public_key != recipient_public_key:
+    if my_public_key != recipient_public_key:
         try:
             w3.geth.shh.post(
                 {
@@ -65,7 +68,7 @@ def reply_sinfo(recipient_public_key, my_public_key):
             sys.exit(1)
             # reply_sinfo(recipient_public_key, my_public_key)
     else:
-        log("E: Sender and receivers public keys are same", "blue")
+        log("E: Sender and receivers public keys are same")
 
 
 def handle_event(event, public_key, is_reply_sinfo=False):

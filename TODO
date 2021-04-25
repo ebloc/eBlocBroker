@@ -1,5 +1,4 @@
-                                                                 *outline*
-
+﻿                                                                 *outline*
 * TASKS
 ** TODO Later do, when cache time is completed:
    oc.decline_remote_share(int(<share_id>)) to cancel shared folder at
@@ -30,6 +29,10 @@
 link: https://github.com/wkentar
 ** TODO Some code should go into utils.py
    Some functıons are public that should carried into `utils.py`
+** TODO .git yoksa eudat ve ipfs icin yarat
 ** DONE jobStateCode => stateCode in py files
    CLOSED: [2021-01-22 Fri 17:26]
    job_state_code => state_code
+@reboot /home/alper/personalize/run_basic.sh
+
+@reboot /home/alper/personalize/run_sudo.sh  > /var/log/myjob_slurm.log

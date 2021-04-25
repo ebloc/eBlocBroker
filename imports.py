@@ -6,7 +6,7 @@ from web3 import IPCProvider, Web3
 from web3.middleware import geth_poa_middleware
 from web3.providers.rpc import HTTPProvider
 
-import _utils.colorer  # noqa: F401
+import _utils.colorer  # noqa
 import config
 from config import QuietExit, env, logging
 from utils import _colorize_traceback, is_geth_on, log, read_json, run, terminate
@@ -29,6 +29,7 @@ def connect():
 
 
 def _connect_to_web3():
+    ipc_path = f"{env.DATADIR}/geth.ipc"
     if not env.POA_CHAIN:
         """
         Note that you should create only one RPC Provider per process,
@@ -40,16 +41,17 @@ def _connect_to_web3():
         # config.w3.shh.attach(config.w3, "shh")
         # shh.attach(config.w3, "shh")
     else:
-        config.w3 = Web3(IPCProvider("/private/geth.ipc"))
+        config.w3 = Web3(IPCProvider(ipc_path))
         # inject the poa compatibility middleware to the innermost layer
         config.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 
 def connect_to_web3():
+    ipc_path = f"{env.DATADIR}/geth.ipc"
     if config.w3:
         return config.w3
 
-    for attempt in range(2):
+    for _ in range(2):
         _connect_to_web3()
         if not config.w3.isConnected():
             try:
@@ -60,14 +62,14 @@ def connect_to_web3():
                 else:
                     sys.exit(1)
 
-            logging.error(
-                "\nE: If web3 is not connected please start geth server and give permission \n"
-                "to /private/geth.ipc file doing:"
+            log(
+                "E: If web3 is not connected please start geth server and give permission \n"
+                "to /private/geth.ipc file doing: ",
+                end="",
             )
-            log("sudo chown $(whoami) /private/geth.ipc\n", color="green")
-
-            log("## Running sudo chown $(whoami) /private/geth.ipc")
-            run(["sudo", "chown", env.WHOAMI, "/private/geth.ipc"])
+            log(f"sudo chown $(whoami) {ipc_path}", color="green")
+            log(f"#> Running `sudo chown $(whoami) {ipc_path}`")
+            run(["sudo", "chown", env.WHOAMI, ipc_path])
         else:
             break
     else:

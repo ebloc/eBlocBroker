@@ -34,7 +34,7 @@ def remove_user(user):
 
 
 def get_idle_cores(is_print_flag=True):
-    # https://stackoverflow.com/a/50095154/2402577
+    # doc: https://stackoverflow.com/a/50095154/2402577
     core_info = run(["sinfo", "-h", "-o%C"]).split("/")
     if len(core_info) != 0:
         allocated_cores = core_info[0]
@@ -43,11 +43,11 @@ def get_idle_cores(is_print_flag=True):
         total_cores = core_info[3]
         if is_print_flag:
             log(
-                f"AllocatedCores={allocated_cores} |"
-                f"IdleCores={idle_cores} |"
-                f"OtherCores={other_cores} |"
-                f"TotalNumberOfCores={total_cores}",
-                "green",
+                f"allocated_cores={allocated_cores} |"
+                f"idle_cores={idle_cores} |"
+                f"other_cores={other_cores} |"
+                f"total_number_of_cores={total_cores}",
+                color="green",
             )
     else:
         logging.error("E: sinfo is emptry string")
@@ -69,16 +69,16 @@ def pending_jobs_check():
 
 def is_on() -> bool:
     """Checks whether Slurm runs on the background or not, if not runs slurm."""
-    log("Checking Slurm... ", end="")
+    log("## Checking Slurm... ", end="")
     processes = ["\<slurmd\>", "\<slurmdbd\>", "\<slurmctld\>"]
-
     for process_name in processes:
         if not is_process_on(process_name, process_name, process_count=0, is_print=False):
+            log("failed", color="red", is_bold=True)
             process_name = process_name.replace("\\", "").replace(">", "").replace("<", "")
             log(
-                f"E: {process_name} is not running in the background. Please run:\nsudo"
-                f" {env.EBLOCPATH}/bash_scripts/run_slurm.sh",
-                "red",
+                f"E: {process_name} is not running in the background. Please run:\n"
+                f"sudo {env.EBLOCPATH}/bash_scripts/run_slurm.sh",
+                color="red",
             )
             raise config.QuietExit
 
@@ -94,14 +94,14 @@ def is_on() -> bool:
         except:
             return False
     elif "sinfo: error" in output:
-        logging.error(f"Error on munged: \n {output} \n run:\nsudo munged -f \n/etc/init.d/munge start")
+        logging.error(f"Error on munged: \n {output}\nrun:\nsudo munged -f \n/etc/init.d/munge start")
         return False
     else:
         print_ok()
         return True
 
 
-def get_elapsed_raw_time(slurm_job_id) -> int:
+def get_elapsed_time(slurm_job_id) -> int:
     try:
         cmd = ["sacct", "-n", "-X", "-j", slurm_job_id, "--format=Elapsed"]
         elapsed_time = run(cmd)
@@ -118,9 +118,9 @@ def get_elapsed_raw_time(slurm_job_id) -> int:
         elapsed_day = elapsed_hour[0]
         elapsed_hour = elapsed_hour[1]
 
-    elapsed_raw_time = int(elapsed_day) * 1440 + int(elapsed_hour) * 60 + int(elapsed_minute) + 1
-    logging.info(f"elapsed_raw_time={elapsed_raw_time}")
-    return elapsed_raw_time
+    elapsed_time = int(elapsed_day) * 1440 + int(elapsed_hour) * 60 + int(elapsed_minute) + 1
+    logging.info(f"elapsed_time={elapsed_time}")
+    return elapsed_time
 
 
 def get_job_end_time(slurm_job_id) -> int:

@@ -11,14 +11,14 @@ import shlex
 import shutil
 import signal
 import socket
-import subprocess
 import sys
 import threading
 import time
 import traceback
 from contextlib import suppress
+from datetime import datetime, timedelta, timezone
 from enum import IntEnum
-from subprocess import PIPE, STDOUT, CalledProcessError, Popen, check_output
+from subprocess import PIPE, CalledProcessError, Popen, check_output
 from typing import Dict
 
 import base58
@@ -78,6 +78,15 @@ class COLOR:
     BOLD = "\033[1m"
     PURPLE = "\033[95m"
     BLUE = "\033[94m"
+    RED = "\033[91m"
+    DEFAULT = "\033[99m"
+    GREY = "\033[90m"
+    YELLOW = "\033[93m"
+    BLACK = "\033[90m"
+    CYAN = "\033[96m"
+    GREEN = "\033[92m"
+    MAGENTA = "\033[95m"
+    WHITE = "'\033[97m"
     END = "\033[0m"
 
 
@@ -87,16 +96,28 @@ def print_ok():
     log(" ]", is_bold=False)
 
 
-def utc_to_local(utc_dt):
+def timestamp_to_local(posix_time: int, zone="Europe/Istanbul"):
+    ts = posix_time / 1000.0
+    tz = pytz.timezone(zone)
+    return datetime.fromtimestamp(ts, tz).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def utc_to_local(utc_dt, zone="Europe/Istanbul"):
     # dt.strftime("%d/%m/%Y") # to get the date
-    local_tz = pytz.timezone("Europe/Istanbul")
+    local_tz = pytz.timezone(zone)
     local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
     return local_tz.normalize(local_dt)
 
 
 def extract_gzip(filename):
-    args = shlex.split(f"gunzip --force {filename}")
-    run(args)
+    try:
+        args = shlex.split(f"gunzip --force {filename}")
+        run(args, is_print_trace=False)
+    except:
+        args = shlex.split(f"zcat {filename}")
+        base_dir = os.path.dirname(filename)
+        base_name = os.path.basename(filename).replace(".gz", "")
+        popen_communicate(args, f"{base_dir}/{base_name}")
 
 
 def untar(tar_file, extract_to):
@@ -114,7 +135,7 @@ def untar(tar_file, extract_to):
             # if tar itself already exist inside the same directory along with
             # `.git` file
             if name not in accept_files:
-                log(f"{tar_file} is already extracted into {extract_to}")
+                log(f"==> {tar_file} is already extracted into\n{extract_to}", color="green")
                 return
     # tar --warning=no-timestamp
     cmd = ["tar", "--warning=no-timestamp", "-xvpf", tar_file, "-C", extract_to, "--no-overwrite-dir", "--strip", "1"]
@@ -143,7 +164,7 @@ def sleep_timer(sleep_duration):
         sys.stdout.write("{:1d} seconds remaining...".format(remaining))
         sys.stdout.flush()
         time.sleep(1)
-    sys.stdout.write("\rSleeping is done!                               \n")
+    sys.stdout.write("\rSleeping is done                                \n")
 
 
 def remove_ansi_escape_sequence(string):
@@ -168,14 +189,17 @@ def _try(func):
         raise
 
 
-def run(cmd, is_print_trace=True) -> str:
-    if type(cmd) is not str:
+def run(cmd, my_env=None, is_print_trace=True) -> str:
+    if not isinstance(cmd, str):
         cmd = list(map(str, cmd))  # all items should be str
     else:
         cmd = [cmd]
 
     try:
-        return check_output(cmd, stderr=STDOUT).decode("utf-8").strip()
+        if my_env is None:
+            return check_output(cmd).decode("utf-8").strip()
+        else:
+            return check_output(cmd, env=my_env).decode("utf-8").strip()
     except CalledProcessError as e:
         if is_print_trace:
             print_trace(cmd, back=2, exc=e.output.decode("utf-8"))
@@ -189,15 +213,15 @@ def run_with_output(cmd):
     ret = ""
     with Popen(cmd, stdout=PIPE, bufsize=1, universal_newlines=True) as p:
         for line in p.stdout:
-            ret += line
-        print(line, end="")  # process output
-        return line.strip()
+            ret += line.strip()
+            print(line, end="")  # process line here
+        return ret
     if p.returncode != 0:
         raise CalledProcessError(p.returncode, p.args)
 
 
 def popen_communicate(cmd, stdout_file=None, mode="w", _env=None):
-    """Acts similir to lib.run(cmd) but also returns the output message captures on
+    """Acts similir to run(cmd) but also returns the output message captures on
     during the run stdout_file is not None in case of nohup process writes its
     results into a file.
     """
@@ -243,7 +267,10 @@ def _colorize_traceback(string=None):
         log(f"{[WHERE(1)]} ", "blue", None)
     else:
         log(f"[{WHERE(1)} {string}] ", "blue", None, end=False)
-    log(tb_colored.rstrip())
+
+    _tb_colored = tb_colored.rstrip()
+    if not _tb_colored:
+        log(_tb_colored)
 
 
 def get_time():
@@ -286,7 +313,7 @@ def ipfs_to_bytes32(ipfs_hash: str) -> str:
     return config.w3.toBytes(hexstr=ipfs_hash_bytes32)
 
 
-def byte_to_mb(size_in_bytes: int) -> int:
+def byte_to_mb(size_in_bytes: float) -> int:
     """Instead of a size divisor of 1024 * 1024 you could use the
     bitwise shifting operator (<<), i.e. 1<<20 to get megabytes."""
     MBFACTOR = float(1 << 20)
@@ -367,10 +394,10 @@ def read_json(path, is_dict=True):
 
 def is_gzip_file_empty(filename):
     """Checks whether the given gzip file is empty or not.
-    *  cmd: gzip -l foo.gz | awk 'NR==2 {print $2}
+    *  cmd: gzip -l filename.gz | awk 'NR==2 {print $2}
     """
-    p1 = subprocess.Popen(["gzip", "-l", filename], stdout=subprocess.PIPE, env={"LC_ALL": "C"})
-    p2 = subprocess.Popen(["awk", "NR==2 {print $2}"], stdin=p1.stdout, stdout=subprocess.PIPE)
+    p1 = Popen(["gzip", "-l", filename], stdout=PIPE, env={"LC_ALL": "C"})
+    p2 = Popen(["awk", "NR==2 {print $2}"], stdin=p1.stdout, stdout=PIPE)
     p1.stdout.close()
     size = p2.communicate()[0].decode("utf-8").strip()
     try:
@@ -422,8 +449,8 @@ def remove_empty_files_and_folders(dir_path) -> None:
 
 
 def print_color(text, color=None, is_bold=True, end=None):
-    if str(text)[0:3] == "==>":
-        print(colored(f"{COLOR.BOLD}==>{COLOR.END}", color="blue"), end="", flush=True)
+    if str(text)[0:3] in ["==>", "#> ", "## "]:
+        print(colored(f"{COLOR.BOLD}{str(text)[0:3]}{COLOR.END}", color="blue"), end="", flush=True)
         text = text[3:]
     elif str(text)[0:2] == "E:":
         print(colored(f"{COLOR.BOLD}E:{COLOR.END}", color="red"), end="", flush=True)
@@ -445,12 +472,28 @@ def log(text="", color=None, filename=None, end=None, is_bold=True):
     text = str(text)
     is_arrow = False
     is_error = False
-    if text[:3] == "==>":
-        is_arrow = True
-    elif text[:2] == "E:":
-        is_error = True
-    elif text == "SUCCESS":
-        color = "green"
+    _len = None
+
+    if text == "[ ok ]":
+        text = f"[ {COLOR.GREEN}ok{COLOR.END} ]"
+
+    if not color:
+        if text[:3] in ["==>", "#> ", "## "]:
+            _len = 3
+            _color = "blue"
+            is_arrow = True
+        elif text[:8] in ["Warning:"]:
+            _len = 8
+            _color = "yellow"
+            is_arrow = True
+        elif text[:2] == "E:":
+            _len = 2
+            _color = "red"
+            is_error = True
+        elif text == "SUCCESS":
+            color = "green"
+        elif text == "FAILED":
+            color = "red"
 
     if threading.current_thread().name != "MainThread" and env.IS_THREADING_ENABLED:
         filename = log_files[threading.current_thread().name]
@@ -471,48 +514,48 @@ def log(text="", color=None, filename=None, end=None, is_bold=True):
             _text = text
 
         if threading.current_thread().name == "MainThread":
-            if is_arrow:
-                print(colored(f"{COLOR.BOLD}==>{COLOR.END}", "blue") + f"{COLOR.BOLD}{text[3:]}{COLOR.END}")
-            elif is_error:
-                print(colored(f"{COLOR.BOLD}E:{COLOR.END}", "red") + f"{COLOR.BOLD}{text[2:]}{COLOR.END}")
+            if is_arrow or is_error:
+                print(
+                    colored(f"{COLOR.BOLD}{text[:_len]}{COLOR.END}", color=_color)
+                    + f"{COLOR.BOLD}{text[_len:]}{COLOR.END}",
+                    end=end,
+                )
             else:
                 print_color(colored(text, color), color, is_bold, end)
 
-        if is_arrow:
-            if is_bold:
-                _text = f"{COLOR.BOLD}{text[3:]}{COLOR.END}"
-            else:
-                _text = text[3:]
-            f.write(colored(f"{COLOR.BOLD}==>{COLOR.END}", "blue") + colored(_text, color))
-        elif is_error:
-            if is_bold:
-                _text = f"{COLOR.BOLD}{text[2:]}{COLOR.END}"
-            else:
-                _text = text[2:]
-            f.write(colored(f"{COLOR.BOLD}E:{COLOR.END}", "red") + colored(_text, color))
+        if is_bold:
+            _text = f"{COLOR.BOLD}{text[_len:]}{COLOR.END}"
+        else:
+            _text = text[_len:]
+
+        if is_arrow or is_error:
+            f.write(colored(f"{COLOR.BOLD}{text[:_len]}{COLOR.END}", color=_color) + colored(_text, color))
         else:
             f.write(colored(_text, color))
     else:
-        if is_arrow:
-            print(colored(f"{COLOR.BOLD}==>{COLOR.END}", "blue") + f"{COLOR.BOLD}{text[3:]}{COLOR.END}")
-        elif is_error:
-            print(colored(f"{COLOR.BOLD}E:{COLOR.END}", "red") + f"{COLOR.BOLD}{text[2:]}{COLOR.END}")
+        text_write = ""
+        if is_arrow or is_error:
+            text_write = (
+                colored(f"{COLOR.BOLD}{text[:_len]}{COLOR.END}", color=_color) + f"{COLOR.BOLD}{text[_len:]}{COLOR.END}"
+            )
         else:
-            print(text, end=end)
+            text_write = text
 
-        f.write(text)
+        print(text_write, end=end)
+        f.write(text_write)
 
     if end is None:
         f.write("\n")
+
     f.close()
 
 
 def print_trace(cmd, back=1, exc=""):
     _cmd = " ".join(cmd)
     if exc:
-        log(f"[{WHERE(back)}] Error failed command: ", color="red", end="")
-        log(_cmd)
-        log(f"E: {exc}", color="red")
+        log(f"[{WHERE(back)}] Error failed command:", color="red")
+        log(f"$ {_cmd}", color="yellow")
+        log(exc, color="red", is_bold=False)
     else:
         log(f"==> Failed shell command:\n{_cmd}", color="yellow")
 
@@ -525,14 +568,16 @@ def WHERE(back=0):
     return "%s:%s %s()" % (os.path.basename(frame.f_code.co_filename), frame.f_lineno, frame.f_code.co_name)
 
 
-def silent_remove(path):
+def silent_remove(path: str, is_warning=True):
     """Removes file or folders based on its the file type.
 
     Helpful Links:
     - https://stackoverflow.com/a/10840586/2402577
     """
-
     try:
+        if path == "/":
+            raise ValueError("E: Attempting to remove /")
+
         if os.path.isfile(path):
             with suppress(FileNotFoundError):
                 os.remove(path)
@@ -540,12 +585,15 @@ def silent_remove(path):
             # deletes a directory and all its contents
             shutil.rmtree(path)
         else:
-            log(f"E: Given path '{path}' does not exists. Nothing is removed. [{WHERE(1)}]")
+            if is_warning:
+                log(f"E: Given path '{path}' does not exists. Nothing is removed. [{WHERE(1)}]")
             return
 
         log(f"==> [{WHERE(1)}]\n{path} is removed", "yellow")
-    except Exception as e:
-        if e.errno != errno.ENOENT:  # errno.ENOENT = no such file or directory
+    except OSError as e:
+        # Suppress the exception if it is a file not found error.
+        # Otherwise, re-raise the exception.
+        if e.errno != errno.ENOENT:
             _colorize_traceback()
             raise e
 
@@ -560,11 +608,11 @@ def is_process_on(process_name, name, process_count=0, port=None, is_print=True)
     Doc: https://stackoverflow.com/a/6482230/2402577"""
     p1 = Popen(["ps", "aux"], stdout=PIPE)
     p2 = Popen(["grep", "-v", "flycheck_"], stdin=p1.stdout, stdout=PIPE)
-    p1.stdout.close()
+    p1.stdout.close()  # type: ignore
     p3 = Popen(["grep", "-v", "grep"], stdin=p2.stdout, stdout=PIPE)
-    p2.stdout.close()
+    p2.stdout.close()  # type: ignore
     p4 = Popen(["grep", "-E", process_name], stdin=p3.stdout, stdout=PIPE)
-    p3.stdout.close()
+    p3.stdout.close()  # type: ignore
     output = p4.communicate()[0].decode("utf-8").strip().splitlines()
     pids = []
     for line in output:
@@ -582,21 +630,16 @@ def is_process_on(process_name, name, process_count=0, port=None, is_print=True)
             running_pid = out.strip().split()[1]
             if running_pid in pids:
                 if is_print:
-                    if name == "Driver":
-                        print_color(f"==> {name} is already running on the background, its pid={running_pid}", "green")
-                    else:
-                        log(f"==> {name} is already running on the background, its pid={running_pid}", "green")
+                    log(f"==> {name} is already running on the background, its pid={running_pid}", color="green")
                 return True
         else:
             if is_print:
-                if name == "Driver":
-                    print_color(f"==> {name} is already running on the background", "green")
-                else:
-                    log(f"==> {name} is already running on the background", "green")
+                log(f"==> {name} is already running on the background", color="green")
             return True
 
     name = name.replace("\\", "").replace(">", "").replace("<", "")
-    log(f"==> {name} is not running on the background")
+    if is_print:
+        log(f"==> {name} is not running on the background")
     return False
 
 
@@ -613,14 +656,12 @@ def is_geth_account_locked(address) -> bool:
     return False
 
 
-def is_driver_on(process_count=0) -> bool:
+def is_driver_on(process_count=0):
     """Check whether driver runs on the background."""
     if is_process_on("python.*[D]river", "Driver", process_count):
         print_color("Track output using:")
         print_color(f"tail -f {env.DRIVER_LOG}", "blue")
         raise config.QuietExit
-
-    return False
 
 
 def is_ganache_on(port) -> bool:
@@ -633,7 +674,7 @@ def is_geth_on():
     process_name = f"geth|{env.RPC_PORT}"
     print(process_name)
     if not is_process_on(process_name, "Geth", process_count=0):
-        log("E: geth is not running on the background. Please run:", "red")
+        log("E: geth is not running on the background. Please run:", color="red")
         log("sudo ~/eBlocPOA/server.sh", "yellow")
         raise config.QuietExit
 
@@ -643,8 +684,8 @@ def is_ipfs_running():
     if is_ipfs_on():
         return True
 
-    log("E: IPFS does not work on the background", "blue")
-    log("## Starting IPFS daemon on the background", "blue")
+    log("Warning: IPFS does not work on the background")
+    log("#> Starting IPFS daemon on the background")
     while True:
         output = run(["python3", f"{env.EBLOCPATH}/python_scripts/run_ipfs_daemon.py"])
         time.sleep(1)
@@ -666,6 +707,13 @@ def check_ubuntu_packages(packages=None):
     return True
 
 
+def is_npm_installed(package_name) -> bool:
+    output = run(["npm", "list", "-g", "--depth=0"])
+    if package_name in output:
+        return True
+    return False
+
+
 def is_dpkg_installed(package_name) -> bool:
     try:
         run(["dpkg", "-s", package_name])
@@ -677,7 +725,7 @@ def is_dpkg_installed(package_name) -> bool:
 def terminate(msg="", is_traceback=True):
     """Terminates Driver and all the dependent python programs to it."""
     if msg:
-        log(text=f"[{WHERE(1)}] Terminated \n{msg}", color="red", is_bold=True)
+        log(f"[{WHERE(1)}] Terminated \n{msg}", color="red", is_bold=True)
 
     if is_traceback:
         _colorize_traceback()
@@ -685,7 +733,7 @@ def terminate(msg="", is_traceback=True):
     # Following line is added, in case ./killall.sh does not work due to sudo
     # It sends the kill signal to all the process groups
     if config.driver_cancel_process:
-        # obtained from global variable
+        # obtained from the global variable
         os.killpg(os.getpgid(config.driver_cancel_process.pid), signal.SIGTERM)
 
     if config.whisper_state_receiver_process:
@@ -705,6 +753,7 @@ def question_yes_no(message, is_terminate=False):
     while True:
         choice = getch().lower()
         if choice in yes:
+            print("")
             break
         elif choice in no or choice in ["\x04", "\x03"]:
             if is_terminate:
@@ -721,9 +770,17 @@ def json_pretty(json_data):
     print(json.dumps(json_data, indent=4, sort_keys=True))
 
 
-def compress_folder(folder_path):
+def is_program_valid(cmd):
+    try:
+        run(cmd)
+    except Exception:
+        terminate(f"E: Please install {cmd[0]} or check its path", is_traceback=False)
+
+
+def compress_folder(folder_path, is_exclude_git=False):
     """Compress folder using tar
     - Note that to get fully reproducible tarballs, you should also impose the sort order used by tar
+    - arg: folder_path should be full path
 
     Helpful Links:
     - https://unix.stackexchange.com/a/438330/198423  == (tar produces different files each time)
@@ -731,39 +788,46 @@ def compress_folder(folder_path):
     """
     base_name = os.path.basename(folder_path)
     dir_path = os.path.dirname(folder_path)
+    tar_base = f"{base_name}.tar.gz"
     with cd(dir_path):
         """cmd:
         find . -print0 | LC_ALL=C sort -z | \
-          PIGZ=-n tar -Ipigz --mtime='1970-01-01 00:00:00' --mode=a+rwX --owner=0 \
-                      --group=0 --numeric-owner --no-recursion \
-                      --null -T - -cvf /tmp/work/output.tar.gz && md5sum /tmp/work/output.tar.gz
+                    PIGZ=-n tar -Ipigz --mtime='1970-01-01 00:00:00' --mode=a+rwX --owner=0 \
+                    --group=0 --numeric-owner --no-recursion \
+                    --null -T - -cvf /tmp/work/output.tar.gz && md5sum /tmp/work/output.tar.gz
         """
-        p1 = subprocess.Popen(["find", base_name, "-print0"], stdout=subprocess.PIPE)
-        p2 = subprocess.Popen(["sort", "-z"], stdin=p1.stdout, stdout=subprocess.PIPE, env={"LC_ALL": "C"})
-        p1.stdout.close()
         cmd = [
             "tar",
             "-Ipigz",
+            "--exclude=.mypy_cache",  # exclude some hidden folders
+            "--exclude=.venv",
             "--mtime=1970-01-01 00:00:00",
             "--mode=a+rwX",
             "--owner=0",
             "--group=0",
-            "--numeric-owner",
             # "--absolute-names",  # --absolute-names is not needed, since absolute paths are not used
+            "--numeric-owner",
             "--no-recursion",
             "--null",
             "-T",
             "-",
             "-cvf",
-            f"{base_name}.tar.gz",
+            tar_base,
         ]
-        p3 = subprocess.Popen(cmd, stdin=p2.stdout, stdout=subprocess.PIPE, env={"PIGZ": "-n"},)  # alternative: GZIP
+        if is_exclude_git:
+            # consider ignoring to add .git into the requested folder
+            idx = 2
+            cmd = cmd[:idx] + ["--exclude=.git"] + cmd[idx:]
+
+        p1 = Popen(["find", base_name, "-print0"], stdout=PIPE)
+        p2 = Popen(["sort", "-z"], stdin=p1.stdout, stdout=PIPE, env={"LC_ALL": "C"})
+        p1.stdout.close()
+        p3 = Popen(cmd, stdin=p2.stdout, stdout=PIPE, env={"PIGZ": "-n"},)  # alternative: "GZIP"
         p2.stdout.close()
         p3.communicate()
-
-        tar_hash = generate_md5sum(f"{base_name}.tar.gz")
+        tar_hash = generate_md5sum(tar_base)
         tar_file = f"{tar_hash}.tar.gz"
-        shutil.move(f"{base_name}.tar.gz", tar_file)
+        shutil.move(tar_base, tar_file)
         log(f"==> Created tar file={dir_path}/{tar_file}")
         log(f"==> tar_hash={tar_hash}")
     return tar_hash, f"{dir_path}/{tar_file}"
@@ -787,7 +851,6 @@ class Link:
         """Creates linked folders under the data_link/ folder"""
         from os import listdir
         from os.path import isdir, join
-        from lib import run_command
 
         if not paths:
             # instead of full path only returns folder names
@@ -811,8 +874,8 @@ class Link:
             self.data_map[folder_name] = folder_hash
             destination = f"{self.path_to}/{folder_hash}"
 
-            run_command(["ln", "-sfn", target, destination])
-            log(f"* '{target}' => ", end="")
+            run(["ln", "-sfn", target, destination])
+            log(f"* '{target}' =>\n  ")
             log(f"'{destination}'", color="yellow")
             folder_new_hash = generate_md5sum(destination)
             assert folder_hash == folder_new_hash, "Hash does not match original and linked folder"
@@ -825,6 +888,7 @@ class cd:
     """
 
     def __init__(self, new_path):
+        self.saved_path = None
         self.new_path = os.path.expanduser(new_path)
 
     def __enter__(self):

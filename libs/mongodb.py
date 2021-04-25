@@ -14,7 +14,7 @@ def check_ok(result):
 
 def add_item(job_key, index, source_code_hash_list, requester_id, timestamp, cloudStorageID, job_info):
     new_item = {
-        "requester_address": job_info["jobOwner"],
+        "requester_address": job_info["job_owner"],
         "requester_id": requester_id,
         "job_key": job_key,
         "index": index,

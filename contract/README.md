@@ -19,6 +19,7 @@ pip install -U eth-brownie
 
 ```
 source $HOME/venv/bin/activate
+brownie console --network development
 brownie console --network eblocpoa
 > web3.eth.blockNumber
 ```
@@ -35,7 +36,6 @@ with open('../eblocbroker/abi.json','w') as fp:
 
 ----------------------------------------------------
 
-
 ```
-mv network-config_.yaml ~/.brownie/network-config.yaml
+cp ~/eBlocBroker/contract/network-config_.yaml ~/.brownie/network-config.yaml
 ```

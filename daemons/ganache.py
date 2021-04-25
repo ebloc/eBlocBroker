@@ -6,10 +6,10 @@ import time
 import daemon
 
 from config import env
-from utils import is_ganache_on, popen_communicate
+from utils import is_ganache_on, is_npm_installed, log, popen_communicate
 
 
-def run(port):
+def run(port, hardfork_name):
     # doc: https://stackoverflow.com/a/8375012/2402577
     print("Running Ganache CLI")
     with daemon.DaemonContext():
@@ -34,6 +34,12 @@ if __name__ == "__main__":
     else:
         port = 8545  # default port number
 
+    hardfork_name = "istanbul"
+    npm_package = "ganache-cli"
+    if not is_npm_installed(npm_package):
+        log(f"E: {npm_package} is not installed within npm", color="red")
+        sys.exit()
+
     if not is_ganache_on(port):
-        run(port)
+        run(port, hardfork_name)
         time.sleep(0.25)

@@ -47,8 +47,8 @@ class Storage(BaseClass):
         self.run_time = self.logged_job.args["runTime"]
         self.job_id = 0
         self.cache_type = logged_job.args["cacheType"]
-        self.dataTransferIn_requested = job_info[0]["dataTransferIn"]
-        self.dataTransferIn_to_download = 0  # size_to_download
+        self.data_transfer_in_requested = job_info[0]["dataTransferIn"]
+        self.data_transfer_in_to_download = 0  # size_to_download
         self.is_already_cached = is_already_cached
         self.source_code_hashes: List[bytes] = logged_job.args["sourceCodeHash"]
         self.source_code_hashes_str: List[str] = [bytes32_to_ipfs(_hash) for _hash in self.source_code_hashes]
@@ -109,10 +109,10 @@ class Storage(BaseClass):
 
     def check_already_cached(self, source_code_hash):
         if os.path.isfile(f"{self.private_dir}/{source_code_hash}.tar.gz"):
-            log(f"==> {source_code_hash} is already cached in {self.private_dir}")
+            log(f"==> {source_code_hash} is already cached in {self.private_dir}", color="blue")
             self.is_already_cached[source_code_hash] = True
         elif os.path.isfile(f"{self.public_dir}/{source_code_hash}.tar.gz"):
-            log(f"==> {source_code_hash} is already cached in {self.public_dir}")
+            log(f"==> {source_code_hash} is already cached in {self.public_dir}", color="blue")
             self.is_already_cached[source_code_hash] = True
 
     def complete_refund(self) -> str:
@@ -152,7 +152,7 @@ class Storage(BaseClass):
 
     def is_cached(self, name, _id) -> bool:
         if self.cache_type[_id] == CacheType.PRIVATE:
-            # first checking does is already exist under public cache directory
+            # Checks whether it is already exist under public cache directory
             cached_folder = f"{self.public_dir}/{name}"
             cached_tar_file = f"{cached_folder}.tar.gz"
 
@@ -165,11 +165,10 @@ class Storage(BaseClass):
 
                 return self.is_md5sum_matches(cached_tar_file, name, _id, "", CacheType.PUBLIC)
         else:
-            # first checking does is already exist under the requesting user's private cache directory
+            # Checks whether it is already exist under the requesting user's private cache directory
             cached_folder = self.private_dir
             cached_folder = f"{self.private_dir}/{name}"
             cached_tar_file = f"{cached_folder}.tar.gz"
-
             if not os.path.isfile(cached_tar_file):
                 if os.path.isfile(f"{cached_folder}/run.sh"):
                     return self.is_md5sum_matches(cached_folder, name, _id, "folder", CacheType.PRIVATE)
@@ -214,21 +213,20 @@ class Storage(BaseClass):
             give_RWE_access(env.WHOAMI, self.requester_home)
             self._sbatch_call()
         except Exception:
-            logging.error("E: Failed to call _sbatch_call() function.")
+            logging.error("E: Failed to call _sbatch_call() function")
             _colorize_traceback()
             raise
 
     def _sbatch_call(self):
         job_key = self.logged_job.args["jobKey"]
         index = self.logged_job.args["index"]
-        main_cloud_storage_id = self.logged_job.args["cloudStorageID"][0]  # 0 indicated maps to sourceCode
+        source_code_idx = 0  # 0 indicated maps to source_sode
+        main_cloud_storage_id = self.logged_job.args["cloudStorageID"][source_code_idx]
         job_info = self.job_info[0]
         job_id = 0  # base job_id for them workflow
         job_block_number = self.logged_job.blockNumber
-
-        # cmd: date --date=1 seconds +%b %d %k:%M:%S %Y
         date = (
-            subprocess.check_output(
+            subprocess.check_output(  # cmd: date --date=1 seconds +%b %d %k:%M:%S %Y
                 ["date", "--date=" + "1 seconds", "+%b %d %k:%M:%S %Y"], env={"LANG": "en_us_88591"},
             )
             .decode("utf-8")
@@ -242,15 +240,14 @@ class Storage(BaseClass):
         p2 = subprocess.Popen(["date", "+%s"], stdin=p1.stdout, stdout=subprocess.PIPE)
         p1.stdout.close()
         timestamp = p2.communicate()[0].decode("utf-8").strip()
-        logging.info(f"Timestamp={timestamp}")
+        log(f"==> timestamp={timestamp}")
         write_to_file(f"{self.results_folder_prev}/timestamp.txt", timestamp)
 
-        logging.info(f"job_received_block_number={job_block_number}")
+        log(f"==> job_received_block_number={job_block_number}")
+        logging.info("Adding recevied job into the mongodb database.")
         # write_to_file(f"{results_folder_prev}/blockNumber.txt", job_block_number)
 
-        logging.info("Adding recevied job into mongodb database.")
-
-        # adding job_key info along with its cacheDuration into mongodb
+        # adding job_key info along with its cache_duration into mongodb
         mongodb.add_item(
             job_key,
             self.index,
@@ -261,18 +258,17 @@ class Storage(BaseClass):
             job_info,
         )
 
-        # TODO: update as used_dataTransferIn value
-        data_transfer_in_json = f"{self.results_folder_prev}/dataTransferIn.json"
+        # TODO: update as used_data_transfer_in value
+        data_transfer_in_json = f"{self.results_folder_prev}/data_transfer_in.json"
         try:
             data = read_json(data_transfer_in_json)
         except:
             data = dict()
-            data["dataTransferIn"] = self.dataTransferIn_to_download
+            data["data_transfer_in"] = self.data_transfer_in_to_download
             with open(data_transfer_in_json, "w") as outfile:
                 json.dump(data, outfile)
             time.sleep(0.25)
 
-        # logging.info(dataTransferIn)
         # seperator character is *
         sbatch_file_path = f"{self.results_folder}/{job_key}*{index}*{job_block_number}.sh"
         copyfile(f"{self.results_folder}/run.sh", sbatch_file_path)
@@ -288,9 +284,10 @@ class Storage(BaseClass):
         subprocess.check_output(["sudo", "chown", "-R", self.requester_id, self.results_folder])
         for _attempt in range(10):
             try:
-                """cmd: # slurm submit job, Real mode -N is used. For Emulator-mode -N use 'sbatch -c'
-                sudo su - $requester_id -c "cd $results_folder &&
-                sbatch -c$job_core_num $results_folder/${job_key}*${index}.sh --mail-type=ALL
+                """Slurm submits job
+                * Real mode -N is used. For Emulator-mode -N use 'sbatch -c'
+                * cmd: sudo su - $requester_id -c "cd $results_folder &&
+                       sbatch -c$job_core_num $results_folder/${job_key}*${index}.sh --mail-type=ALL
                 """
                 cmd = f'sbatch -N {job_core_num} "{sbatch_file_path}" --mail-type=ALL'
                 with cd(self.results_folder):
@@ -301,7 +298,7 @@ class Storage(BaseClass):
                             remove_user(env.SLURMUSER)
                             add_user_to_slurm(env.SLURMUSER)
                             job_id = _run_as_sudo(env.SLURMUSER, cmd, shell=True)
-                time.sleep(1)  # wait 1 second for Slurm idle core to be updated
+                time.sleep(1)  # wait 1 second for slurm idle core to be updated
             except Exception:
                 _colorize_traceback()
                 slurm.remove_user(self.requester_id)

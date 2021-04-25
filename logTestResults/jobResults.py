@@ -52,7 +52,7 @@ with open(fname, "r") as ins:
             + str(job_info["coreMinuteGas"])
             + " "
             + "{0: <16}".format("job_infoOwner:")
-            + job_info["jobOwner"]
+            + job_info["job_owner"]
         )
 
 print(f"GAINED={sum1}")

@@ -128,7 +128,7 @@ def decrypt_using_gpg(gpg_file, extract_target=None):
             silent_remove(tar_file)
 
 
-def gpg_encrypt(user_gpg_finderprint, target):
+def gpg_encrypt(user_gpg_finderprint, target) -> bool:
     is_delete = False
     if os.path.isdir(target):
         try:
@@ -148,8 +148,8 @@ def gpg_encrypt(user_gpg_finderprint, target):
             is_delete = True
 
     if os.path.isfile(encrypted_file_target):
-        log(f"==> {encrypted_file_target} is already created.")
-        return encrypted_file_target
+        log(f"==> GPG_file: {encrypted_file_target} is already created.")
+        return True
 
     try:
         cmd = [
@@ -164,11 +164,12 @@ def gpg_encrypt(user_gpg_finderprint, target):
             encrypt_target,
         ]
         run(cmd)
-        return encrypted_file_target
+        log(f"==> GPG_file: {encrypted_file_target}")
+        return True
     except Exception as e:
         _colorize_traceback()
-        if "encryption failed: Unusable public key" in str(e.output):
-            log("==> Solution: https://stackoverflow.com/a/34132924/2402577")
+        if "encryption failed: Unusable public key" in str(e):
+            log("==> Check solution: https://stackoverflow.com/a/34132924/2402577")
         raise e
     finally:
         if is_delete:
@@ -179,7 +180,7 @@ def get_cumulative_size(ipfs_hash):
     return ipfs_stat(ipfs_hash)["CumulativeSize"]
 
 
-def add(path: str, is_hidden=False):
+def add(path: str, is_hidden=False) -> str:
     """Add file or folder into ipfs.
 
     :param is_hidden: boolean if it is true hidden files/foders are included such as .git
@@ -193,8 +194,7 @@ def add(path: str, is_hidden=False):
     elif os.path.isfile(path):
         cmd = ["ipfs", "add", "--quiet", "--progress", path]
     else:
-        logging.error("E: Requested path does not exist")
-        raise
+        raise Exception("E: Requested path does not exist")
 
     for attempt in range(10):
         try:
@@ -244,8 +244,8 @@ def get_only_ipfs_hash(path, is_hidden=True) -> str:
 
 
 def remove_lock_files():
-    silent_remove(f"{env.HOME}/.ipfs/repo.lock")
-    silent_remove(f"{env.HOME}/.ipfs/datastore/LOCK")
+    silent_remove(f"{env.HOME}/.ipfs/repo.lock", is_warning=True)
+    silent_remove(f"{env.HOME}/.ipfs/datastore/LOCK", is_warning=True)
 
 
 def connect_to_bootstrap_node():

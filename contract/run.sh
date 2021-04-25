@@ -1,10 +1,9 @@
 #!/bin/bash
 
+PORT=8547
 source $HOME/venv/bin/activate
 
-rm -rf reports/
 brownie compile
-PORT=8547
 $HOME/eBlocBroker/daemons/ganache.py $PORT
 
 # pytest tests -s -x -v --disable-pytest-warnings --log-level=INFO  # test all

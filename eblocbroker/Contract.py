@@ -8,14 +8,15 @@ from utils import _colorize_traceback, read_json, terminate
 
 class Contract:
     def __init__(self):
-        try:
-            from imports import connect
+        if env.IS_DRIVER:
+            try:
+                from imports import connect
 
-            self.eBlocBroker, self.w3 = connect()
-        except Exception as e:
-            if type(e).__name__ != "QuietExit":
-                _colorize_traceback()
-            sys.exit(1)
+                self.eBlocBroker, self.w3 = connect()
+            except Exception as e:
+                if type(e).__name__ != "QuietExit":
+                    _colorize_traceback()
+                sys.exit(1)
 
     # Imported methods
     # ================
@@ -79,7 +80,7 @@ class Contract:
     def get_block_number(self):
         return self.w3.eth.blockNumber
 
-    def get_deployed_block_number(self):
+    def get_deployed_block_number(self) -> int:
         try:
             contract = read_json(f"{env.HOME}/eBlocBroker/eblocbroker/contract.json")
         except:
@@ -88,9 +89,9 @@ class Contract:
 
         block_number = self.w3.eth.getTransaction(contract["txHash"]).blockNumber
         if block_number is None:
-            return "#> Contract is not available on the blockchain, is it synced?"
-        else:
-            return self.w3.eth.getTransaction(contract["txHash"]).blockNumber
+            raise Exception("E: Contract is not available on the blockchain, is it synced?")
+
+        return self.w3.eth.getTransaction(contract["txHash"]).blockNumber
 
     def is_web3_connected(self):
         return self.w3.isConnected()
