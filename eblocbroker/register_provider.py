@@ -103,7 +103,13 @@ if __name__ == "__main__":
     commitment_block = 240
     try:
         tx_hash = Ebb.register_provider(
-            available_core, email, federation_cloud_id, gpg_fingerprint, prices, ipfs_id, commitment_block,
+            available_core,
+            email,
+            federation_cloud_id,
+            gpg_fingerprint,
+            prices,
+            ipfs_id,
+            commitment_block,
         )
         receipt = get_tx_status(tx_hash)
     except:

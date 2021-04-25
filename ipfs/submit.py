@@ -28,7 +28,6 @@ if __name__ == "__main__":
     eBlocBroker, w3 = connect()
     Ebb = Contract.eblocbroker
     job = Job()
-
     if not is_dpkg_installed("pigz"):
         log("E: Install pigz:\nsudo apt-get install pigz")
         sys.exit()
@@ -109,7 +108,7 @@ if __name__ == "__main__":
             targets.append(target)
 
         if idx != len(folders) - 1:
-            print("--------------")
+            log("--------------")
 
     # Requester inputs for testing purpose
     job.cores = [1]

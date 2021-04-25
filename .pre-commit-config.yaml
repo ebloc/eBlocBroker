@@ -17,7 +17,7 @@ repos:
         entry: bash -c 'mypy "$@" || true' --
 
 -   repo: https://github.com/psf/black
-    rev: 2471b9256d9d9dfea1124d20072201693b9b0865
+    rev: 20.8b1  # Replace by any tag/version: https://github.com/psf/black/tags
     hooks:
       - id: black
         name: black

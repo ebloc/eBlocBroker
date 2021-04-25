@@ -6,7 +6,6 @@ from web3 import IPCProvider, Web3
 from web3.middleware import geth_poa_middleware
 from web3.providers.rpc import HTTPProvider
 
-import _utils.colorer  # noqa
 import config
 from config import QuietExit, env, logging
 from utils import _colorize_traceback, is_geth_on, log, read_json, run, terminate
@@ -16,38 +15,39 @@ def connect():
     if config.ebb and config.w3:
         return config.ebb, config.w3
 
-    if config.w3 is None:
-        config.w3 = connect_to_web3()
+    try:
+        if config.w3 is None:
+            config.w3 = connect_to_web3()
 
-    if config.ebb is None:
-        try:
+        if config.ebb is None:
             config.ebb = connect_to_eblocbroker()
-        except Exception as e:
-            raise Exception("E: Problem on web3 connection") from e
+    except Exception as e:
+        raise Exception("E: Problem on web3 connection") from e
 
     return config.ebb, config.w3
 
 
 def _connect_to_web3():
-    ipc_path = f"{env.DATADIR}/geth.ipc"
-    if not env.POA_CHAIN:
+    WEB3_PROVIDER_PATH = f"{env.DATADIR}/geth.ipc"
+    if not env.POA_CHAIN or env.IS_GETH_TUNNEL:
         """
         Note that you should create only one RPC Provider per process,
         as it recycles underlying TCP/IP network connections between
         your process and Ethereum node
         """
         config.w3 = Web3(HTTPProvider(f"http://localhost:{env.RPC_PORT}"))
+        #
         # from web3.geth import shh  # does not work on > web3==5.11
         # config.w3.shh.attach(config.w3, "shh")
         # shh.attach(config.w3, "shh")
     else:
-        config.w3 = Web3(IPCProvider(ipc_path))
+        config.w3 = Web3(IPCProvider(WEB3_PROVIDER_PATH))
         # inject the poa compatibility middleware to the innermost layer
         config.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 
 def connect_to_web3():
-    ipc_path = f"{env.DATADIR}/geth.ipc"
+    WEB3_PROVIDER_PATH = f"{env.DATADIR}/geth.ipc"
     if config.w3:
         return config.w3
 
@@ -55,7 +55,11 @@ def connect_to_web3():
         _connect_to_web3()
         if not config.w3.isConnected():
             try:
-                is_geth_on()
+                if env.IS_GETH_TUNNEL:
+                    log("E: Please open the tunnel: `ssh -f -N -L 8545:localhost:8545 username@remote`")
+                    raise
+                else:
+                    is_geth_on()
             except Exception as e:
                 if type(e).__name__ != "QuietExit":
                     _colorize_traceback()
@@ -67,9 +71,9 @@ def connect_to_web3():
                 "to /private/geth.ipc file doing: ",
                 end="",
             )
-            log(f"sudo chown $(whoami) {ipc_path}", color="green")
-            log(f"#> Running `sudo chown $(whoami) {ipc_path}`")
-            run(["sudo", "chown", env.WHOAMI, ipc_path])
+            log(f"sudo chown $(whoami) {WEB3_PROVIDER_PATH}", color="green")
+            log(f"#> Running `sudo chown $(whoami) {WEB3_PROVIDER_PATH}`")
+            run(["sudo", "chown", env.WHOAMI, WEB3_PROVIDER_PATH])
         else:
             break
     else:

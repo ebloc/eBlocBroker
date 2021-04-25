@@ -131,7 +131,8 @@ class GdriveClass(Storage):
             try:
                 folder = self.folder_path_to_download[source_code_hash]
                 subprocess_call(
-                    ["gdrive", "download", "--recursive", key, "--force", "--path", folder], 10,
+                    ["gdrive", "download", "--recursive", key, "--force", "--path", folder],
+                    10,
                 )
             except:
                 return False
@@ -161,7 +162,14 @@ class GdriveClass(Storage):
                 return False
 
             filename = f"{self.folder_path_to_download[source_code_hash]}/{name}"
-            p1 = subprocess.Popen(["ls", "-ln", filename,], stdout=subprocess.PIPE,)
+            p1 = subprocess.Popen(
+                [
+                    "ls",
+                    "-ln",
+                    filename,
+                ],
+                stdout=subprocess.PIPE,
+            )
             p2 = subprocess.Popen(["awk", "{print $5}"], stdin=p1.stdout, stdout=subprocess.PIPE)
             p1.stdout.close()  # type: ignore
             # returns downloaded files size in bytes
@@ -204,7 +212,10 @@ class GdriveClass(Storage):
 
     def get_data(self, key, _id, is_job_key=False):
         try:
-            mime_type, name, = self.get_data_init(key, _id, is_job_key)
+            (
+                mime_type,
+                name,
+            ) = self.get_data_init(key, _id, is_job_key)
         except Exception as e:
             _colorize_traceback()
             raise e

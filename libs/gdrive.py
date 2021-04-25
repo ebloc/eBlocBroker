@@ -132,7 +132,15 @@ def _list(tar_hash, is_folder=False):
         filename = f"name='{tar_hash}.tar.gz'"
 
     # run(['gdrive', 'list', '--query', 'name contains \'' + tar_hash + '.tar.gz' + '\'', '--no-header'])
-    return run(["gdrive", "list", "--query", filename, "--no-header",])
+    return run(
+        [
+            "gdrive",
+            "list",
+            "--query",
+            filename,
+            "--no-header",
+        ]
+    )
 
 
 def _upload(dir_path, tar_hash, is_folder=False):
@@ -150,7 +158,15 @@ def _upload(dir_path, tar_hash, is_folder=False):
         subprocess.run(["gdrive", "upload", tar_file_path], check=True)
         silent_remove(tar_file_path)
         output = (
-            subprocess.check_output(["gdrive", "list", "--query", f"name='{file_name_to_upload}'", "--no-header",])
+            subprocess.check_output(
+                [
+                    "gdrive",
+                    "list",
+                    "--query",
+                    f"name='{file_name_to_upload}'",
+                    "--no-header",
+                ]
+            )
             .decode("utf-8")
             .strip()
         )

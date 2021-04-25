@@ -1114,7 +1114,6 @@ contract eBlocBroker is eBlocBrokerInterface, EBlocBrokerBase {
 
     function getJobSize(address _provider, string memory key) public view returns (uint256) {
         require(providers[msg.sender].committedBlock > 0);
-
         return providers[_provider].jobStatus[key].length;
     }
 

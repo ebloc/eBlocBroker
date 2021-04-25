@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import datetime
 import os
 import sys
 import textwrap
@@ -118,7 +119,6 @@ def run_driver():
     # dummy sudo command to get the password when session starts for only to
     # create users and submit the slurm job under another user
     run(["sudo", "printf", "hello"])
-    env.IS_DRIVER = True
     env.IS_THREADING_ENABLED = False
     config.logging = setup_logger(env.DRIVER_LOG)
     columns = 100
@@ -183,7 +183,6 @@ def run_driver():
     log(f"==> log_file={env.DRIVER_LOG}")
     log(f"==> rootdir={os.getcwd()}")
     log(f"==> whoami={env.WHOAMI}")
-    log("{0: <18}".format("==> contract_address=") + contract_file["address"])
     if not Ebb.does_provider_exist(env.PROVIDER_ID):
         # Updated since cluster is not registered
         write_to_file(env.BLOCK_READ_FROM_FILE, Ebb.get_block_number())
@@ -371,7 +370,12 @@ def run_driver():
                 slurm.pending_jobs_check()
                 main_cloud_storage_id = logged_job.args["cloudStorageID"][0]
                 if main_cloud_storage_id in (StorageID.IPFS, StorageID.IPFS_GPG):
-                    storage_class = IpfsClass(logged_job, job_infos, requester_md5_id, is_already_cached,)
+                    storage_class = IpfsClass(
+                        logged_job,
+                        job_infos,
+                        requester_md5_id,
+                        is_already_cached,
+                    )
                 elif main_cloud_storage_id == StorageID.EUDAT:
                     if not config.oc:
                         try:
@@ -383,7 +387,12 @@ def run_driver():
                     storage_class = EudatClass(logged_job, job_infos, requester_md5_id, is_already_cached)
                     # thread.start_new_thread(driverFunc.driver_eudat, (logged_job, jobInfo, requester_md5_id))
                 elif main_cloud_storage_id == StorageID.GDRIVE:
-                    storage_class = GdriveClass(logged_job, job_infos, requester_md5_id, is_already_cached,)
+                    storage_class = GdriveClass(
+                        logged_job,
+                        job_infos,
+                        requester_md5_id,
+                        is_already_cached,
+                    )
 
                 # run_storage_process(storage_class)
                 if env.IS_THREADING_ENABLED:
@@ -407,6 +416,11 @@ def run_driver():
 
 if __name__ == "__main__":
     try:
+        columns = 104
+        _columns = int(int(columns) / 2 - 12)
+        date_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        log(date_now + " " + "=" * (_columns - 16) + " provider session starts " + "=" * (_columns - 5), color="cyan")
+
         with launch_ipdb_on_exception():
             # if an exception is raised, enclose code with the `with` statement
             # to launch ipdb

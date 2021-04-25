@@ -28,7 +28,11 @@ def register_requester(self, account_id, email, federation_cloud_id, gpg_fingerp
 
     try:
         tx = self.eBlocBroker.functions.registerRequester(
-            gpg_fingerprint, email, federation_cloud_id, ipfs_id, whisper_pub_key,
+            gpg_fingerprint,
+            email,
+            federation_cloud_id,
+            ipfs_id,
+            whisper_pub_key,
         ).transact({"from": account, "gas": 4500000})
         return tx.hex()
     except Exception:

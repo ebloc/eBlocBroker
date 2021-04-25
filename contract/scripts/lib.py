@@ -113,8 +113,7 @@ class Job:
         try:
             _from = _Ebb.account_id_to_address(account_id)
             if is_geth_account_locked(_from):
-                log(f"E: Account({_from}) is locked")
-                raise QuietExit
+                raise Exception(f"E: Account({_from}) is locked")
 
             if not _Ebb.eBlocBroker.functions.doesRequesterExist(_from).call():
                 log(f"E: Requester's Ethereum address {_from} is not registered")
@@ -129,7 +128,8 @@ class Job:
                 raise QuietExit
         except QuietExit:
             sys.exit(1)
-        except:
+        except Exception as e:
+            print(str(e))
             _colorize_traceback()
             sys.exit(1)
 
@@ -205,7 +205,9 @@ class JobPrices:
                 if self.job.data_prices_set_block_numbers[idx] > 0:
                     # if true, registered data's price should be considered for storage
                     output = self.ebb.getRegisteredDataPrice(
-                        self.job.provider, source_code_hash, self.job.data_prices_set_block_numbers[idx],
+                        self.job.provider,
+                        source_code_hash,
+                        self.job.data_prices_set_block_numbers[idx],
                     )
                     data_price = output[0]
                     self.storage_cost += data_price

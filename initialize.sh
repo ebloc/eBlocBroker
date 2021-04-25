@@ -36,6 +36,8 @@ if [ $setup -eq 1 ]; then
 
     pip install --upgrade pip
     pip install --upgrade pip --user
+    # pip3
+    # ====
     pip3 install --upgrade pip
 
     # Recover pip:

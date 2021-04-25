@@ -11,11 +11,10 @@ logging = setup_logger()
 
 if __name__ == "__main__":
     Ebb = Contract()
-
     is_write_to_file = False
     if len(sys.argv) == 2:
         is_write_to_file = sys.argv[1]
-        if is_write_to_file in ("1", "True"):
+        if is_write_to_file in ("1", "True", "true"):
             is_write_to_file = True
 
     try:

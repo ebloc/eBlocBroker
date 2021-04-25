@@ -183,7 +183,10 @@ class Storage(BaseClass):
     def is_run_exists_in_tar(self, tar_path) -> bool:
         try:
             output = (
-                subprocess.check_output(["tar", "ztf", tar_path, "--wildcards", "*/run.sh"], stderr=subprocess.DEVNULL,)
+                subprocess.check_output(
+                    ["tar", "ztf", tar_path, "--wildcards", "*/run.sh"],
+                    stderr=subprocess.DEVNULL,
+                )
                 .decode("utf-8")
                 .strip()
             )
@@ -227,7 +230,8 @@ class Storage(BaseClass):
         job_block_number = self.logged_job.blockNumber
         date = (
             subprocess.check_output(  # cmd: date --date=1 seconds +%b %d %k:%M:%S %Y
-                ["date", "--date=" + "1 seconds", "+%b %d %k:%M:%S %Y"], env={"LANG": "en_us_88591"},
+                ["date", "--date=" + "1 seconds", "+%b %d %k:%M:%S %Y"],
+                env={"LANG": "en_us_88591"},
             )
             .decode("utf-8")
             .strip()

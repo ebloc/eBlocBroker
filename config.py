@@ -11,10 +11,9 @@ from typing import Union
 
 from dotenv import load_dotenv
 
-# from web3 import Web3
 import _utils.colored_traceback as colored_traceback
-import _utils.colorer  # noqa
 
+# from web3 import Web3
 # import eblocbroker.Contract as Contract
 # from eblocbroker.Contract import Contract
 
@@ -80,13 +79,15 @@ class ENV:
         self.OC_USER = _env["OC_USER"]
         self.DATADIR = _env["DATADIR"]
 
-        self.IS_IPFS_USE = str(_env["IS_IPFS_USE"]).lower() in ("yes", "true", "t", "1")
-        self.IS_EUDAT_USE = str(_env["IS_EUDAT_USE"]).lower() in ("yes", "true", "t", "1",)
-        self.IS_GDRIVE_USE = str(_env["IS_GDRIVE_USE"]).lower() in ("yes", "true", "t", "1",)
-        self.POA_CHAIN = str(_env["POA_CHAIN"]).lower() in ("yes", "true", "t", "1",)
+        true_set = ("yes", "true", "t", "1")
+        self.IS_IPFS_USE = str(_env["IS_IPFS_USE"]).lower() in true_set
+        self.IS_EUDAT_USE = str(_env["IS_EUDAT_USE"]).lower() in true_set
+        self.IS_GDRIVE_USE = str(_env["IS_GDRIVE_USE"]).lower() in true_set
+        self.POA_CHAIN = str(_env["POA_CHAIN"]).lower() in true_set
         self.IS_DRIVER = False
         self.RPC_PORT = _env["RPC_PORT"]
         self.EBLOCPATH = _env["EBLOCPATH"]
+        self.IS_GETH_TUNNEL = _env["IS_GETH_TUNNEL"]
 
         # self.GDRIVE_CLOUD_PATH = f"/home/{self.WHOAMI}/foo"
         self.GDRIVE_METADATA = f"/home/{self.WHOAMI}/.gdrive"
@@ -137,7 +138,9 @@ def setup_logger(log_path="", is_brownie=False):
 
     if is_brownie:
         logging.basicConfig(
-            level=logging.INFO, format="[%(funcName)21s():%(lineno)3s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S",
+            level=logging.INFO,
+            format="[%(funcName)21s():%(lineno)3s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
     elif log_path:
         env.log_filename = log_path

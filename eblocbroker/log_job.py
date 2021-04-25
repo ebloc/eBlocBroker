@@ -31,7 +31,9 @@ def log_return(event_filter, poll_interval):
 
 def run_log_job(self, from_block, provider):
     event_filter = self.eBlocBroker.events.LogJob.createFilter(
-        fromBlock=int(from_block), toBlock="latest", argument_filters={"provider": str(provider)},
+        fromBlock=int(from_block),
+        toBlock="latest",
+        argument_filters={"provider": str(provider)},
     )
     logged_jobs = event_filter.get_all_entries()
 

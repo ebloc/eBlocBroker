@@ -251,7 +251,7 @@ def test_stored_data_usage():
     )
 
     assert "LogDataStorageRequest" not in tx.events
-    mine(240)
+    _mine(240)
 
     job_price, _cost = cost(provider, requester, job)
     # first time job is submitted with the data files
@@ -328,7 +328,7 @@ def test_computational_refund():
     startTime = 1579524978
     tx = Ebb.setJobStatusRunning(job.source_code_hashes[0], index, jobID, startTime, {"from": accounts[0]})
     rpc.sleep(60)
-    mine(5)
+    _mine(5)
 
     args = [index, jobID, 1579524998, 2, 0, job.cores, [5], True]
     run_time = 1
@@ -417,7 +417,7 @@ def test_storage_refund():
 
     assert _cost["storage"] == storage_cost_sum
     assert _cost["computational"] + _cost["data_transfer"] + _cost["cache"] == refundedWei
-    mine(240)
+    _mine(240)
 
     tx = Ebb.refundStorageDeposit(provider, requester, job.source_code_hashes[0], {"from": requester, "gas": 4500000})
     refundedWei = tx.events["LogStorageDeposit"]["payment"]
@@ -485,7 +485,7 @@ def test_storage_refund():
     with brownie.reverts():
         tx = Ebb.receiveStorageDeposit(requester, job.source_code_hashes[0], {"from": provider, "gas": 4500000})
 
-    mine(240)
+    _mine(240)
     # after deadline (1 hr) is completed to store the data, provider could obtain the money
     for idx, source_code_hash in enumerate(job.source_code_hashes):
         tx = Ebb.receiveStorageDeposit(requester, source_code_hash, {"from": provider, "gas": 4500000})
@@ -495,7 +495,7 @@ def test_storage_refund():
 
 
 def test_update_provider():
-    mine(5)
+    _mine(5)
     provider_registered_bn = register_provider()
 
     federation_cloud_id = "ee14ea28-b869-1036-8080-9dbd8c6b1579@b2drop.eudat.eu"
@@ -518,7 +518,7 @@ def test_update_provider():
 
     prices_set_block_number = Ebb.getUpdatedProviderPricesBlocks(accounts[0])[1]
     assert Ebb.getProviderInfo(accounts[0], prices_set_block_number)[1][0] == 16
-    mine(240)
+    _mine(240)
 
     available_core_num = 32
     Ebb.updateProviderPrices(available_core_num, commitmentBlockNum, prices, {"from": accounts[0]})
@@ -635,7 +635,7 @@ def test_multiple_data():
     tx = Ebb.setJobStatusRunning(jobKey, index, jobID, startTime, {"from": accounts[0]})
 
     rpc.sleep(15 * 4 * execution_time)
-    mine(1)
+    _mine(1)
     end_time = startTime + 15 * 4 * execution_time
     args = [
         index,
@@ -667,7 +667,7 @@ def test_multiple_data():
     tx = Ebb.setJobStatusRunning(jobKey, index, jobID, startTime, {"from": accounts[0]})
 
     rpc.sleep(15 * 4 * execution_time)
-    mine(1)
+    _mine(1)
     end_time = startTime + 15 * 4 * execution_time
 
     args = [index, jobID, end_time, dataTransfer[0], dataTransfer[1], job.cores, job.run_time, False]
@@ -701,7 +701,7 @@ def test_workflow():
     source_code_hash1 = "0x68b8d8218e730fc2957bcb12119cb204"
     # "web3.toBytes(hexstr=ipfs_to_bytes32("QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Ve"))
     Ebb.registerData(source_code_hash1, 20, 240, {"from": provider})
-    mine(6)
+    _mine(6)
 
     with brownie.reverts():  # registerData should revert
         Ebb.registerData(source_code_hash1, 20, 1000, {"from": provider})
@@ -718,13 +718,12 @@ def test_workflow():
     res = Ebb.getRegisteredDataPrice(provider, source_code_hash1, data_block_numbers[1])
     print(f"registerDataPrice={res}")
     assert res[0] == 250
-
-    mine(231)
+    _mine(231)
 
     res = Ebb.getRegisteredDataPrice(provider, source_code_hash1, 0)
     print(f"registerDataPrice={res}")
     assert res[0] == 20
-    mine(1)
+    _mine(1)
 
     res = Ebb.getRegisteredDataPrice(provider, source_code_hash1, 0)
     print(f"registerDataPrice={res}")
@@ -921,7 +920,7 @@ def test_simple_submit():
     startTime = 1579524978
     tx = Ebb.setJobStatusRunning(job.key, index, jobID, startTime, {"from": provider})
     rpc.sleep(60)
-    mine(5)
+    _mine(5)
 
     completionTime = 1579524998
     dataTransferIn = 0
@@ -1112,7 +1111,7 @@ def test_submit_job(ebb):
     # print("\x1b[6;30;42m" + "========== DONE ==========" + "\x1b[0m")
 
     """
-    mine(240)
+    _mine(240)
     tx = Ebb.receiveStorageDeposit(requester, source_code_hash, {"from": provider});
     print('receiveStorageDeposit => GasUsed:' + str(tx.__dict__['gas_used']) + '| blockNumber=' + str(tx.block_number))
     print(Ebb.getReceivedStorageDeposit(requester, source_code_hash, {"from": }))

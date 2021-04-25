@@ -34,7 +34,8 @@ def eudatSubmitJob(tar_hash=None):
         price_cache,
     ) = eBlocBroker.functions.getProviderInfo(providerAddress).call()
     my_filter = eBlocBroker.eventFilter(
-        "LogProvider", {"fromBlock": int(blockReadFrom), "toBlock": int(blockReadFrom) + 1},
+        "LogProvider",
+        {"fromBlock": int(blockReadFrom), "toBlock": int(blockReadFrom) + 1},
     )
     fID = my_filter.get_all_entries()[0].args["fID"]
 

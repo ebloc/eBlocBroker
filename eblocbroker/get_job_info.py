@@ -19,7 +19,9 @@ def update_job_cores(self, job_info, provider, job_key, index, job_id=0, receive
         to_block = int(received_block_number)
     try:
         event_filter = config.ebb.events.LogJob.createFilter(
-            fromBlock=int(received_block_number), toBlock=to_block, argument_filters={"provider": str(provider)},
+            fromBlock=int(received_block_number),
+            toBlock=to_block,
+            argument_filters={"provider": str(provider)},
         )
 
         logged_jobs = event_filter.get_all_entries()
@@ -47,7 +49,9 @@ def get_job_source_code_hashes(self, job_info, provider, job_key, index, job_id=
 
     try:
         event_filter = config.ebb.events.LogJob.createFilter(
-            fromBlock=int(received_block_number), toBlock=to_block, argument_filters={"provider": str(provider)},
+            fromBlock=int(received_block_number),
+            toBlock=to_block,
+            argument_filters={"provider": str(provider)},
         )
         logged_jobs = event_filter.get_all_entries()
         for logged_job in logged_jobs:
@@ -68,9 +72,13 @@ def get_job_info(self, provider, job_key, index, job_id, received_block_number=N
 
     try:
         provider = config.w3.toChecksumAddress(provider)
-        (job, received, job_owner, dataTransferIn, dataTransferOut,) = config.ebb.functions.getJobInfo(
-            provider, job_key, int(index), int(job_id)
-        ).call()
+        (
+            job,
+            received,
+            job_owner,
+            dataTransferIn,
+            dataTransferOut,
+        ) = config.ebb.functions.getJobInfo(provider, job_key, int(index), int(job_id)).call()
 
         jobPrices = config.ebb.functions.getProviderPricesForJob(provider, job_key, int(index)).call()
         self.job_info = {
@@ -113,7 +121,9 @@ def get_job_info(self, provider, job_key, index, job_id, received_block_number=N
         #    to_block = int(received_block_number)
 
         event_filter = self.eBlocBroker.events.LogProcessPayment.createFilter(
-            fromBlock=int(received_block_number), toBlock="latest", argument_filters={"provider": str(provider)},
+            fromBlock=int(received_block_number),
+            toBlock="latest",
+            argument_filters={"provider": str(provider)},
         )
 
         logged_receipts = event_filter.get_all_entries()

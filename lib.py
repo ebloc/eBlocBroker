@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import datetime
 import glob
 import os
 import signal
@@ -82,9 +81,6 @@ def session_start_msg(slurm_user, block_number, pid, columns=104):
     else:
         PROVIDER_ID = env.PROVIDER_ID
 
-    _columns = int(int(columns) / 2 - 12)
-    date_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    log(date_now + " " + "=" * (_columns - 16) + " provider session starts " + "=" * (_columns - 5), color="cyan")
     log(f"==> This Driver process has the PID {pid}")
     log(f"slurm_user={slurm_user} | provider_address={PROVIDER_ID} | block_number={block_number}", color="blue")
 
@@ -275,8 +271,9 @@ def check_linked_data(path_from, path_to, folders_to_share=None, is_continue=Fal
         print(f" {key} ==> data_link/{value}")
 
     if not is_continue:
+        print("")
         question_yes_no(
-            "\n## Would you like to continue with linked folder path in your run.sh?\n"
+            "## Would you like to continue with linked folder path in your run.sh?\n"
             "If no, please update your run.sh file [Y/n]: "
         )
     for folder in folders_to_share:

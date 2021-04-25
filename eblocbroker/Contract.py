@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
+import logging
 import sys
 
 from config import Web3NotConnected, env
-from utils import _colorize_traceback, read_json, terminate
+from utils import _colorize_traceback, log, read_json, terminate
 
 
 class Contract:
-    def __init__(self):
-        if env.IS_DRIVER:
+    def __init__(self, is_brownie=False):
+        if not is_brownie:
             try:
                 from imports import connect
 
@@ -48,7 +49,11 @@ class Contract:
 
     def account_id_to_address(self, account_id):
         if isinstance(account_id, int):
-            return self.w3.toChecksumAddress(self.w3.eth.accounts[account_id])
+            try:
+                account = self.w3.eth.accounts[account_id]
+                return self.w3.toChecksumAddress(account)
+            except:
+                logging.error("E: given index account does not exist, check .eblocpoa/keystore")
         else:
             return self.w3.toChecksumAddress(account_id)
 
@@ -144,7 +149,7 @@ class Contract:
         ret = self.eBlocBroker.call().getJobStorageTime(provider_address, source_code_hash)
         return ret[0], ret[1]
 
-    def is_contract_exists(self):
+    def is_contract_exists(self) -> bool:
         try:
             contract = read_json(f"{env.EBLOCPATH}/eblocbroker/contract.json")
         except:
@@ -154,6 +159,8 @@ class Contract:
         contract_address = self.w3.toChecksumAddress(contract["address"])
         if self.w3.eth.getCode(contract_address) == "0x" or self.w3.eth.getCode(contract_address) == b"":
             raise
+        log(f"==> contract_address={contract_address}")
+        return True
 
     def get_provider_receipt_node(self, provider_address, index):
         return self.eBlocBroker.functions.getProviderReceiptNode(provider_address, index).call()

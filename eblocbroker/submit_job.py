@@ -35,23 +35,33 @@ def check_before_submit(self, provider, _from, provider_info, key, job):
     main_storage_id = job.storage_ids[0]
     is_use_ipfs = False
     for storage_id in job.storage_ids:
-        if storage_id in (StorageID.IPFS, StorageID.IPFS_GPG):
+        if storage_id > 4:
+            logging.error("\nE: Wrong storage_ids value is given. Please provide from 0 to 4")
+            raise
+
+        if storage_id in {StorageID.IPFS, StorageID.IPFS_GPG}:
             is_use_ipfs = True
             break
 
     if not job.source_code_hashes:
-        logging.error("E: sourceCodeHash list is empty")
+        logging.error("E: source_code_hash list is empty")
         raise
 
-    if len(key) != 46 and main_storage_id in (StorageID.IPFS, StorageID.IPFS_GPG):
+    if len(key) >= 64:
+        logging.error("\nE: Length of key is greater than 64, please provide lesser")
+        raise
+
+    key_len = 46
+    if len(key) != key_len and main_storage_id in {StorageID.IPFS, StorageID.IPFS_GPG}:
         logging.error(
-            "\nE: key's length does not match with its original length, it should be 46. Please check your key length"
+            f"\nE: key's length does not match with its original length, it should be {key_len}. Please check your key length"
         )
         raise
 
+    key_len = 33
     if len(key) != 33 and main_storage_id == StorageID.GDRIVE:
         logging.error(
-            "\nE: key's length does not match with its original length, it should be 33. Please check your key length"
+            f"\nE: key's length does not match with its original length, it should be {key_len}. Please check your key length"
         )
         raise
 
@@ -64,15 +74,6 @@ def check_before_submit(self, provider, _from, provider_info, key, job):
             logging.error(f"\nE: run_time[{idx}] is provided as 0. Please provide non-zero value")
             raise
 
-    for storage_id in job.storage_ids:
-        if storage_id > 4:
-            logging.error("\nE: Wrong storage_ids value is given. Please provide from 0 to 4")
-            raise
-
-    if len(key) >= 64:
-        logging.error("\nE: Length of key is greater than 64, please provide lesser")
-        raise
-
     for core_min in job.run_time:
         if core_min > 1440:
             logging.error("\nE: run_time provided greater than 1440. Please provide smaller value")
@@ -81,7 +82,7 @@ def check_before_submit(self, provider, _from, provider_info, key, job):
     for cache_type in job.cache_types:
         if cache_type > 1:
             # cache_type = {0: private, 1: public}
-            logging.error(f"\nE: cachType ({cache_type}) provided greater than 1. Please provide smaller value")
+            logging.error(f"\nE: cache_type ({cache_type}) provided greater than 1. Please provide smaller value")
             raise
 
     if is_use_ipfs:

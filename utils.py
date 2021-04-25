@@ -16,7 +16,7 @@ import threading
 import time
 import traceback
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from enum import IntEnum
 from subprocess import PIPE, CalledProcessError, Popen, check_output
 from typing import Dict
@@ -468,7 +468,7 @@ def print_color(text, color=None, is_bold=True, end=None):
             print(colored(text, color), end="")
 
 
-def log(text="", color=None, filename=None, end=None, is_bold=True):
+def log(text="", color=None, filename=None, end=None, is_bold=True, flush=False):
     text = str(text)
     is_arrow = False
     is_error = False
@@ -492,7 +492,7 @@ def log(text="", color=None, filename=None, end=None, is_bold=True):
             is_error = True
         elif text == "SUCCESS":
             color = "green"
-        elif text == "FAILED":
+        elif text in ["FAILED", "ERROR"]:
             color = "red"
 
     if threading.current_thread().name != "MainThread" and env.IS_THREADING_ENABLED:
@@ -519,6 +519,7 @@ def log(text="", color=None, filename=None, end=None, is_bold=True):
                     colored(f"{COLOR.BOLD}{text[:_len]}{COLOR.END}", color=_color)
                     + f"{COLOR.BOLD}{text[_len:]}{COLOR.END}",
                     end=end,
+                    flush=flush,
                 )
             else:
                 print_color(colored(text, color), color, is_bold, end)
@@ -541,7 +542,7 @@ def log(text="", color=None, filename=None, end=None, is_bold=True):
         else:
             text_write = text
 
-        print(text_write, end=end)
+        print(text_write, end=end, flush=flush)
         f.write(text_write)
 
     if end is None:
@@ -639,7 +640,8 @@ def is_process_on(process_name, name, process_count=0, port=None, is_print=True)
 
     name = name.replace("\\", "").replace(">", "").replace("<", "")
     if is_print:
-        log(f"==> {name} is not running on the background")
+        log(f"==> '{name}' is not running on the background. {[WHERE(1)]}")
+        # _colorize_traceback()
     return False
 
 
@@ -748,16 +750,16 @@ def terminate(msg="", is_traceback=True):
 
 
 def question_yes_no(message, is_terminate=False):
-    print(message, end="", flush=True)
+    log(text=message, end="", flush=True)
     getch = _Getch()
     while True:
         choice = getch().lower()
         if choice in yes:
-            print("")
+            log("")
             break
         elif choice in no or choice in ["\x04", "\x03"]:
             if is_terminate:
-                print("\n")
+                log("\n")
                 terminate()
             else:
                 sys.exit(1)
@@ -822,7 +824,12 @@ def compress_folder(folder_path, is_exclude_git=False):
         p1 = Popen(["find", base_name, "-print0"], stdout=PIPE)
         p2 = Popen(["sort", "-z"], stdin=p1.stdout, stdout=PIPE, env={"LC_ALL": "C"})
         p1.stdout.close()
-        p3 = Popen(cmd, stdin=p2.stdout, stdout=PIPE, env={"PIGZ": "-n"},)  # alternative: "GZIP"
+        p3 = Popen(
+            cmd,
+            stdin=p2.stdout,
+            stdout=PIPE,
+            env={"PIGZ": "-n"},
+        )  # alternative: "GZIP"
         p2.stdout.close()
         p3.communicate()
         tar_hash = generate_md5sum(tar_base)
@@ -875,7 +882,7 @@ class Link:
             destination = f"{self.path_to}/{folder_hash}"
 
             run(["ln", "-sfn", target, destination])
-            log(f"* '{target}' =>\n  ")
+            log(f"* '{target}' =>")
             log(f"'{destination}'", color="yellow")
             folder_new_hash = generate_md5sum(destination)
             assert folder_hash == folder_new_hash, "Hash does not match original and linked folder"

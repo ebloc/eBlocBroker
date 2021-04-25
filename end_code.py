@@ -114,7 +114,10 @@ class Eudat(Common):
         logging.info(f"[{source_code_hash}]'s data_transfer_out => {_data_transfer_out} MB")
         self.data_transfer_out += _data_transfer_out
         success = eudat.upload_results(
-            self.encoded_share_tokens[source_code_hash], self.patch_upload_name, self.patch_folder, 5,
+            self.encoded_share_tokens[source_code_hash],
+            self.patch_upload_name,
+            self.patch_folder,
+            5,
         )
         return success
 
@@ -202,7 +205,11 @@ class ENDCODE(IpfsGPG, Ipfs, Eudat, Gdrive):
         try:
             self.job_info = eblocbroker_function_call(
                 lambda: Ebb.get_job_info(
-                    env.PROVIDER_ID, self.job_key, self.index, self.job_id, self.received_block_number,
+                    env.PROVIDER_ID,
+                    self.job_key,
+                    self.index,
+                    self.job_id,
+                    self.received_block_number,
                 ),
                 10,
             )
@@ -469,7 +476,12 @@ class ENDCODE(IpfsGPG, Ipfs, Eudat, Gdrive):
         try:
             self.job_info = eblocbroker_function_call(
                 lambda: Ebb.get_job_source_code_hashes(
-                    self.job_info, env.PROVIDER_ID, self.job_key, self.index, self.job_id, self.received_block_number,
+                    self.job_info,
+                    env.PROVIDER_ID,
+                    self.job_key,
+                    self.index,
+                    self.job_id,
+                    self.received_block_number,
                 ),
                 10,
             )
