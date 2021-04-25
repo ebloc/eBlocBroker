@@ -4,7 +4,6 @@ import sys
 
 from config import env, logging
 from lib import get_tx_status
-from libs.whisper import check_whisper
 from utils import _colorize_traceback
 
 
